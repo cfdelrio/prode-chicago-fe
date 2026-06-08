@@ -116,10 +116,10 @@ export function LeaderHome({
 
   const handleShare = async () => {
     const text =
-      `Voy primero en el PRODE Caballito con ${myEntry.puntos_totales} puntos 🏆\n` +
-      `¿Me venís a buscar?\nprodecaballito.com/ranking`
+      `Voy primero en el PRODE Nueva Chicago con ${myEntry.puntos_totales} puntos 🏆\n` +
+      `¿Me venís a buscar?\nchicago.prodecaballito.com/ranking`
     if (navigator.share) {
-      await navigator.share({ title: 'PRODE Caballito', text }).catch(() => {})
+      await navigator.share({ title: 'PRODE Nueva Chicago', text }).catch(() => {})
     } else {
       await navigator.clipboard.writeText(text)
       setShared(true)
@@ -428,7 +428,7 @@ export function LeaderHome({
                 letterSpacing: '0.15em',
                 textTransform: 'uppercase',
               }}>
-                Desde ProdeCaballito
+                Desde Prode Nueva Chicago
               </p>
               <p style={{
                 margin: 0,
@@ -784,7 +784,7 @@ export function LeaderHome({
             margin: '0 0 16px',
             fontSize: 13, color: TEXT_DIM, lineHeight: 1.6,
           }}>
-            Sumate al canal <strong style={{ color: TEXT_WHITE }}>ProdeCaballito</strong> para enterarte de novedades y resultados.
+            Sumate al canal <strong style={{ color: TEXT_WHITE }}>Prode Nueva Chicago</strong> para enterarte de novedades y resultados.
           </p>
           <div style={{
             display: 'inline-block',

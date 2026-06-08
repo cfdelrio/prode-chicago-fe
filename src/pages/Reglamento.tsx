@@ -304,7 +304,7 @@ export function Reglamento({ showHomePromo = false }: { showHomePromo?: boolean 
         </div>
         <div className="p-5 flex flex-col items-center text-center gap-3">
           <p className="text-sm text-gray-700 font-semibold">
-            Sumate al canal <strong>ProdeCaballito</strong> para enterarte de novedades y resultados.
+            Sumate al canal <strong>Prode Nueva Chicago</strong> para enterarte de novedades y resultados.
           </p>
           <div className="p-3 bg-white rounded-xl border border-gray-100">
             <LazyQR

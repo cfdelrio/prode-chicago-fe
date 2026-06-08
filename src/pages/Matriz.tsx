@@ -1,12 +1,14 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { api } from '@/api/client'
 import { useT } from '@/hooks/useT'
-import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { Sk, SkMatrizRow } from '@/components/ui/Skeleton'
+import { Button } from '@/components/ui/Button'
 import { calcularPuntaje, POINT_COLORS } from '@/utils/scoring'
 import { teamFlag } from '@/utils/teamFlags'
 import { useAuthStore } from '@/store/authStore'
+import { useToastStore } from '@/store/toastStore'
 import type { Match, RankingEntry } from '@/types'
 
 type BetMap = Record<string, Record<string, { home: number; away: number }>>
@@ -112,20 +114,54 @@ function BetPopover({ cell, onClose }: { cell: ActiveCell; onClose: () => void }
   )
 }
 
+function MatrizSkeleton() {
+  return (
+    <div className="px-2 py-4 space-y-3">
+      <div className="max-w-7xl mx-auto px-2 space-y-1.5">
+        <Sk className="h-6 w-32" />
+        <Sk className="h-3 w-48" />
+      </div>
+      <div className="max-w-7xl mx-auto px-2 flex gap-2 flex-wrap">
+        {[0, 1, 2, 3, 4].map(i => <Sk key={i} className="h-5 w-12 rounded" />)}
+      </div>
+      <div className="bg-white rounded-lg overflow-hidden border border-gray-100">
+        <div className="bg-[#001A4B]/90 h-12" />
+        {[0, 1, 2, 3, 4, 5, 6, 7].map(i => <SkMatrizRow key={i} />)}
+      </div>
+    </div>
+  )
+}
+
 export function Matriz() {
   const { user } = useAuthStore()
+  const { show } = useToastStore()
   const t = useT()
   const [matches, setMatches] = useState<Match[]>([])
   const [ranking, setRanking] = useState<RankingEntry[]>([])
   const [bets, setBets] = useState<BetMap>({})
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [activeCell, setActiveCell] = useState<ActiveCell | null>(null)
-  const [filterColors, setFilterColors] = useState<Set<string>>(new Set())
+  const [filterColors, setFilterColors] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem('matriz.filterColors')
+      if (!raw) return new Set()
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return new Set()
+      const valid = new Set(['celeste', 'rojo', 'verde', 'amarillo', 'gris'])
+      return new Set(parsed.filter((c: unknown) => typeof c === 'string' && valid.has(c)))
+    } catch {
+      return new Set()
+    }
+  })
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [togglingFav, setTogglingFav] = useState<string | null>(null)
   const [showVedaModal, setShowVedaModal] = useState(false)
+  const [avatarFullscreen, setAvatarFullscreen] = useState<{ avatar: string; name: string } | null>(null)
   const tableRef = useRef<HTMLDivElement>(null)
   const headerInnerRef = useRef<HTMLDivElement>(null)
+  const bodyJugadorRef = useRef<HTMLTableCellElement>(null)
+  const headerJugadorRef = useRef<HTMLTableCellElement>(null)
 
   const onBodyScroll = () => {
     if (headerInnerRef.current && tableRef.current) {
@@ -133,24 +169,54 @@ export function Matriz() {
     }
   }
 
+  // Sincroniza el ancho de la columna "Jugador" entre el header y el body.
+  // Son dos <table> separadas, entonces el browser las dimensiona independientemente.
+  useLayoutEffect(() => {
+    const sync = () => {
+      if (!bodyJugadorRef.current || !headerJugadorRef.current) return
+      const w = bodyJugadorRef.current.offsetWidth
+      if (w > 0) {
+        headerJugadorRef.current.style.minWidth = `${w}px`
+        headerJugadorRef.current.style.width = `${w}px`
+      }
+    }
+    sync()
+    window.addEventListener('resize', sync)
+    return () => window.removeEventListener('resize', sync)
+  }, [loading, ranking.length])
+
   const loadMatrizData = useCallback(async () => {
-    const [mRes, rRes, bRes, favRes] = await Promise.all([
-      api.get('/matches?limit=200'),
-      api.get('/ranking?limit=200&include_unpaid=true'),
-      api.get('/bets/all-for-matrix'),
-      api.get('/ranking/favorites').catch(() => ({ data: { data: [] } })),
-    ])
-    setMatches(mRes.data.data.matches)
-    setRanking(rRes.data.data.ranking)
-    setBets(bRes.data.data)
-    setFavorites(new Set(favRes.data.data || []))
+    setRefreshing(true)
+    try {
+      const [mRes, rRes, bRes, favRes] = await Promise.all([
+        api.get('/matches?limit=200'),
+        api.get('/ranking?limit=200&include_unpaid=true'),
+        api.get('/bets/all-for-matrix'),
+        api.get('/ranking/favorites').catch(() => ({ data: { data: [] } })),
+      ])
+      setMatches(mRes.data.data.matches)
+      setRanking(rRes.data.data.ranking)
+      setBets(bRes.data.data)
+      setFavorites(new Set(favRes.data.data || []))
+    } finally {
+      setRefreshing(false)
+    }
   }, [])
 
   useEffect(() => {
-    loadMatrizData().finally(() => setLoading(false))
+    loadMatrizData().catch(() => show(t.matrix.errorLoad, 'error')).finally(() => setLoading(false))
     const interval = setInterval(loadMatrizData, 30000)
     return () => clearInterval(interval)
   }, [loadMatrizData])
+
+  useEffect(() => {
+    try {
+      if (filterColors.size === 0) localStorage.removeItem('matriz.filterColors')
+      else localStorage.setItem('matriz.filterColors', JSON.stringify(Array.from(filterColors)))
+    } catch {
+      // Storage no disponible (Safari privado, cuota, etc.) — no es crítico
+    }
+  }, [filterColors])
 
   const handleToggleFavorite = useCallback(async (planillaId: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -164,8 +230,10 @@ export function Matriz() {
         else next.delete(planillaId)
         return next
       })
-    } catch { /* silent */ } finally { setTogglingFav(null) }
-  }, [togglingFav])
+    } catch {
+      show(t.ranking.errorFavorite, 'error')
+    } finally { setTogglingFav(null) }
+  }, [togglingFav, show, t])
 
   const handleBadgeClick = useCallback((
     e: React.MouseEvent<HTMLSpanElement>,
@@ -188,9 +256,10 @@ export function Matriz() {
   const filteredMatches = matches
   const finishedMatches = filteredMatches.filter(m => m.estado === 'finished')
   const pendingMatches  = filteredMatches.filter(m => m.estado !== 'finished')
+  const hasLiveMatch    = filteredMatches.some(m => m.estado === 'live')
   const allMatches = [...finishedMatches, ...pendingMatches]
 
-  if (loading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>
+  if (loading) return <MatrizSkeleton />
 
   const baseRows: RankingEntry[] = ranking
 
@@ -231,7 +300,19 @@ export function Matriz() {
 
       <div className="max-w-7xl mx-auto px-2 flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-[#006d2e]">{t.matrix.title}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-[#001A4B]">{t.matrix.title}</h1>
+            {hasLiveMatch && (
+              <span
+                className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-red-600"
+                aria-live="polite"
+                title={refreshing ? 'Actualizando datos' : 'Hay partidos en vivo'}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full bg-red-500 ${refreshing ? 'animate-ping' : 'animate-pulse'}`} />
+                LIVE
+              </span>
+            )}
+          </div>
           <p className="text-xs text-gray-400 mt-1">
             {t.matrix.players(rows.length)} · {t.matrix.matches(allMatches.length)}
           </p>
@@ -292,15 +373,15 @@ export function Matriz() {
           <div ref={headerInnerRef} className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <table className="text-xs border-collapse min-w-max">
               <thead>
-                <tr className="bg-[#006d2e] text-white">
-                  <th className="sticky left-0 bg-[#006d2e] px-2 py-2 text-left font-semibold z-30 min-w-[140px] sm:min-w-[180px]">
+                <tr className="bg-[#001A4B] text-white">
+                  <th ref={headerJugadorRef} className="sticky left-0 bg-[#001A4B] px-2 py-2 text-left font-semibold z-30 min-w-[140px] sm:min-w-[180px]">
                     {t.ranking.player}
                   </th>
-                  <th className="px-2 py-2 text-center font-semibold w-14 bg-[#006d2e]">{t.ranking.pts}</th>
+                  <th className="px-2 py-2 text-center font-semibold w-14 bg-[#001A4B]">{t.ranking.pts}</th>
                   {allMatches.map((m) => (
                     <th
                       key={m.id}
-                      className="px-1 py-2 text-center font-medium min-w-[60px] bg-[#006d2e] cursor-default"
+                      className="px-1 py-2 text-center font-medium min-w-[60px] bg-[#001A4B] cursor-default"
                       title={`${m.home_team} vs ${m.away_team}${m.estado === 'finished' ? ` · ${m.resultado_local}-${m.resultado_visitante}` : ''}`}
                     >
                       <div className="flex flex-col items-center gap-0.5">
@@ -318,7 +399,7 @@ export function Matriz() {
                           {m.away_team.substring(0,3)}
                         </div>
                         {m.estado === 'finished' && (
-                          <div className="text-[#ffffff] font-bold text-[10px] leading-none mt-0.5">
+                          <div className="text-[#FFDF00] font-bold text-[10px] leading-none mt-0.5">
                             {m.resultado_local}-{m.resultado_visitante}
                           </div>
                         )}
@@ -338,7 +419,7 @@ export function Matriz() {
                 el mismo ancho mínimo que el header visible */}
             <thead aria-hidden>
               <tr className="invisible">
-                <th className="min-w-[140px] sm:min-w-[180px] p-0" />
+                <th ref={bodyJugadorRef} className="min-w-[140px] sm:min-w-[180px] p-0" />
                 <th className="w-14 p-0" />
                 {allMatches.map((m) => <th key={m.id} className="min-w-[60px] p-0" />)}
               </tr>
@@ -356,35 +437,38 @@ export function Matriz() {
                   <tr key={rowKey} className={`${rowBg} ${isMe ? 'hover:bg-blue-100/60' : 'hover:bg-yellow-50/50'} transition-colors ${isUnpaid && !isMe ? 'border-l-4 border-orange-400' : ''}`}>
                     <td className={`sticky left-0 px-1.5 sm:px-2 py-1.5 font-medium z-10 border-r border-gray-100 ${rowBg} min-w-[140px] sm:min-w-auto`}>
                       <div className="flex items-center gap-2">
-                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${isMe ? 'bg-[#00923f] text-white' : 'bg-gray-200 text-gray-600'}`}>
+                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${isMe ? 'bg-[#0042A5] text-white' : 'bg-gray-200 text-gray-600'}`}>
                           {pos}
                         </span>
                         {r.user_avatar
-                          ? <img src={r.user_avatar} alt="" className="w-6 h-6 rounded-full object-cover shrink-0 border border-gray-100" />
-                          : <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${isMe ? 'bg-[#00923f] text-white' : 'bg-gray-300 text-gray-600'}`}>
+                          ? <img
+                              src={r.user_avatar}
+                              alt=""
+                              className="w-6 h-6 rounded-full object-cover shrink-0 border border-gray-100 cursor-pointer hover:ring-2 hover:ring-[#0042A5] hover:ring-offset-1 transition-all"
+                              onClick={e => { e.stopPropagation(); setAvatarFullscreen({ avatar: r.user_avatar!, name: r.user_name }) }}
+                            />
+                          : <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${isMe ? 'bg-[#0042A5] text-white' : 'bg-gray-300 text-gray-600'}`}>
                               {r.user_name[0].toUpperCase()}
                             </div>
                         }
                         <div className="min-w-0 flex-1">
-                          <div className={`truncate max-w-[90px] sm:max-w-[105px] text-[11px] sm:text-xs font-semibold ${isMe ? 'text-[#00923f]' : 'text-[#006d2e]'}`}>
+                          <div className={`truncate max-w-[90px] sm:max-w-[105px] text-[11px] sm:text-xs font-semibold ${isMe ? 'text-[#0042A5]' : 'text-[#001A4B]'}`}>
                             {r.user_name}
                           </div>
                           {r.nombre_planilla && (
                             <span className="block text-[10px] text-gray-400 truncate max-w-[90px]">{r.nombre_planilla}</span>
                           )}
-                          {isUnpaid && (
-                            <span className="inline-block mt-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500 text-white leading-none whitespace-nowrap">
-                              ⚠️ {t.ranking.noOfficial}
-                            </span>
-                          )}
+                          <span className={`inline-block mt-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap ${isUnpaid ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-700'}`}>
+                            {isUnpaid ? 'IMPAGO' : 'Pagó'}
+                          </span>
                         </div>
-                        {r.whatsapp_number && !isMe && (
+                        {r.whatsapp_number && (
                           <a
                             href={`https://wa.me/${r.whatsapp_number}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={e => e.stopPropagation()}
-                            title={`WhatsApp a ${r.user_name}`}
+                            title={`WhatsApp${!isMe ? ` a ${r.user_name}` : ''}`}
                             className="shrink-0 transition-opacity opacity-80 hover:opacity-100 leading-none"
                             style={{ color: '#25D366' }}
                           >
@@ -397,13 +481,15 @@ export function Matriz() {
                             disabled={togglingFav === r.planilla_id}
                             className={`shrink-0 text-sm leading-none transition-opacity disabled:opacity-30 ${favorites.has(r.planilla_id) ? 'opacity-100' : 'opacity-40 hover:opacity-90'}`}
                             title={favorites.has(r.planilla_id) ? t.ranking.unfollow : t.ranking.follow}
+                            aria-label={favorites.has(r.planilla_id) ? t.ranking.unfollow : t.ranking.follow}
+                            aria-pressed={favorites.has(r.planilla_id)}
                           >
                             {favorites.has(r.planilla_id) ? '⭐' : '☆'}
                           </button>
                         )}
                       </div>
                     </td>
-                    <td className="px-2 py-1.5 text-center font-black text-[#00923f]">{pts}</td>
+                    <td className="px-2 py-1.5 text-center font-black text-[#0042A5]">{pts}</td>
                     {allMatches.map((m) => {
                       const b = playerBets[m.id]
                       const isCutoffPassed = new Date() > new Date(m.time_cutoff)
@@ -418,9 +504,18 @@ export function Matriz() {
                         return (
                           <td key={m.id} className="px-1 py-1.5 text-center">
                             <span
+                              role="button"
+                              tabIndex={0}
                               onClick={(e) => handleBadgeClick(e, m.id, rowKey, b, m, res)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  handleBadgeClick(e as unknown as React.MouseEvent<HTMLSpanElement>, m.id, rowKey, b, m, res)
+                                }
+                              }}
+                              aria-label={`${m.home_team} vs ${m.away_team}: pronóstico ${b.home}-${b.away}, ${t.match.popLabels[res.color]}`}
                               title={`${m.home_team} vs ${m.away_team}: ${b.home}-${b.away} · ${t.match.popLabels[res.color]}`}
-                              className={`inline-block px-1.5 py-0.5 rounded font-bold text-[11px] cursor-pointer select-none transition-all
+                              className={`inline-block px-1.5 py-0.5 rounded font-bold text-[11px] cursor-pointer select-none transition-all focus:outline-none focus:ring-2 focus:ring-[#0042A5] focus:ring-offset-1
                                 ${POINT_COLORS[res.color]}
                                 ${isActive ? 'ring-2 ring-offset-1 ring-gray-400 scale-110' : 'hover:scale-105 hover:shadow-md'}
                                 ${filterColors.size > 0 && !filterColors.has(res.color) ? 'opacity-10 pointer-events-none' : ''}
@@ -446,8 +541,17 @@ export function Matriz() {
                         <td key={m.id} className="px-1 py-1.5 text-center">
                           {b
                             ? <span
+                                role="button"
+                                tabIndex={0}
                                 onClick={(e) => { e.stopPropagation(); setShowVedaModal(true) }}
-                                className="inline-block text-[13px] cursor-pointer select-none opacity-50 hover:opacity-80 transition-opacity"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault()
+                                    setShowVedaModal(true)
+                                  }
+                                }}
+                                aria-label="Período de veda activo"
+                                className="inline-block text-[13px] cursor-pointer select-none opacity-50 hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-[#0042A5] rounded"
                                 title="Período de veda activo"
                               >🔒</span>
                             : <span className="text-gray-200">—</span>
@@ -475,25 +579,48 @@ export function Matriz() {
             >
               <div className="text-center space-y-3">
                 <div className="text-4xl">🔒</div>
-                <h3 className="font-bold text-[#006d2e] text-base">Período de veda activo</h3>
+                <h3 className="font-bold text-[#001A4B] text-base">Período de veda activo</h3>
                 <p className="text-sm text-gray-500 leading-relaxed">
                   Las apuestas de otros jugadores no se pueden ver hasta que finalice el período de veda de este partido.
                 </p>
                 <p className="text-xs text-gray-400 leading-relaxed">
                   Una vez que comience el partido, podrás ver todos los pronósticos.
                 </p>
-                <button
+                <Button
+                  variant="dark"
+                  fullWidth
                   onClick={() => setShowVedaModal(false)}
-                  className="w-full bg-[#006d2e] text-white font-bold py-2.5 rounded-xl text-sm mt-2 hover:bg-[#002870] transition-colors"
+                  className="mt-2"
                 >
                   Entendido
-                </button>
+                </Button>
               </div>
             </div>
           </div>
         </>
       )}
 
+      {/* Avatar fullscreen */}
+      {avatarFullscreen && (
+        <div
+          className="fixed inset-0 bg-black/85 z-[60] flex items-center justify-center backdrop-blur-sm"
+          onClick={() => setAvatarFullscreen(null)}
+        >
+          <img
+            src={avatarFullscreen.avatar}
+            alt={avatarFullscreen.name}
+            className="max-w-[88vw] max-h-[88vh] rounded-2xl object-contain shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setAvatarFullscreen(null)}
+            className="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-black/50 text-white text-xl hover:bg-black/70 transition-colors"
+            aria-label="Cerrar"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -154,7 +154,7 @@ describe('MatchCard — renderizado básico', () => {
   it('sin apuesta y canEdit → botón "Apostar" visible', () => {
     const future = new Date(NOW + 8 * 3600 * 1000).toISOString()
     render(<MatchCard match={makeMatch({ time_cutoff: future })} planillaId="p1" now={NOW} />)
-    expect(screen.getByText(/apostar/i)).toBeInTheDocument()
+    expect(screen.getByText(/completar resultado/i)).toBeInTheDocument()
   })
 })
 
@@ -185,7 +185,7 @@ describe('MatchCard — modo edición', () => {
     const user = userEvent.setup()
     const future = new Date(NOW + 8 * 3600 * 1000).toISOString()
     render(<MatchCard match={makeMatch({ time_cutoff: future })} planillaId="p1" now={NOW} />)
-    await user.click(screen.getByText(/apostar/i))
+    await user.click(screen.getByText(/completar resultado/i))
     expect(screen.getByRole('textbox')).toBeInTheDocument()
   })
 
@@ -194,7 +194,7 @@ describe('MatchCard — modo edición', () => {
     const { api } = await import('@/api/client')
     const future = new Date(NOW + 8 * 3600 * 1000).toISOString()
     render(<MatchCard match={makeMatch({ time_cutoff: future })} planillaId="p1" now={NOW} />)
-    await user.click(screen.getByText(/apostar/i))
+    await user.click(screen.getByText(/completar resultado/i))
     const input = screen.getByRole('textbox')
     await user.clear(input)
     await user.type(input, 'abc')
@@ -219,7 +219,7 @@ describe('MatchCard — modo edición', () => {
         now={NOW}
       />
     )
-    await user.click(screen.getByText(/apostar/i))
+    await user.click(screen.getByText(/completar resultado/i))
     const input = screen.getByRole('textbox')
     await user.clear(input)
     await user.type(input, '2-0')
@@ -259,7 +259,7 @@ describe('MatchCard — modo edición', () => {
 
     const future = new Date(NOW + 8 * 3600 * 1000).toISOString()
     render(<MatchCard match={makeMatch({ time_cutoff: future })} planillaId="p1" now={NOW} />)
-    await user.click(screen.getByText(/apostar/i))
+    await user.click(screen.getByText(/completar resultado/i))
     await user.type(screen.getByRole('textbox'), '1-0')
     await user.keyboard('{Enter}')
     await waitFor(() => expect(mockShow).toHaveBeenCalledWith('Cupo agotado', 'error'))

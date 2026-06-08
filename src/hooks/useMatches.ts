@@ -1,18 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/api/client'
+import { useApiCall } from './useApiCall'
 import type { Match } from '@/types'
 
 export function useMatches(limit = 200) {
   const [matches, setMatches] = useState<Match[]>([])
-  const [loading, setLoading] = useState(true)
+  const { loading, call } = useApiCall({ errorMessage: 'No se pudieron cargar los partidos' })
 
   const load = useCallback(async () => {
-    try {
-      const res = await api.get(`/matches?limit=${limit}`)
-      setMatches(res.data.data.matches)
-    } catch { /* caller handles empty state */ }
-    finally { setLoading(false) }
-  }, [limit])
+    const res = await call(() => api.get(`/matches?limit=${limit}`))
+    if (res?.matches) setMatches(res.matches)
+  }, [limit, call])
 
   useEffect(() => { load() }, [load])
 

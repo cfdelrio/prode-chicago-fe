@@ -5,7 +5,10 @@ import { useT } from '@/hooks/useT'
 import { MatchCard } from '@/components/match/MatchCard'
 import { Sk, SkMatchCard } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { AdCard } from '@/components/ui/AdCard'
+import { OnboardingTour, hasSeenOnboarding } from '@/components/onboarding/Tour'
+import { InviteFriendCTA } from '@/components/InviteFriendCTA'
+import { PushOptInBanner } from '@/components/PushOptInBanner'
+import { PushPromptModal } from '@/components/PushPromptModal'
 import { useToastStore } from '@/store/toastStore'
 import { teamFlag } from '@/utils/teamFlags'
 
@@ -43,18 +46,29 @@ export function Apuestas() {
   const [planillas, setPlanillas] = useState<Planilla[]>([])
   const [selectedPlanilla, setSelectedPlanilla] = useState<string>('')
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'todos' | 'pendientes' | 'finalizados'>('todos')
   const [search, setSearch] = useState('')
   const [showNewPlanilla, setShowNewPlanilla] = useState(false)
   const [creatingPlanilla, setCreatingPlanilla] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [lockingPlanilla, setLockingPlanilla] = useState(false)
   const [now, setNow] = useState(Date.now())
+  const [showHelp, setShowHelp] = useState(true)
+  const [runTour, setRunTour] = useState(false)
   const hasLive = matches.some(m => m.estado === 'live')
+  const isTournamentClosed = matches.length > 0 && now > Math.min(...matches.map(m => new Date(m.time_cutoff).getTime()))
 
   useEffect(() => {
     loadInitial()
   }, [])
+
+  // Arrancar el tour de bienvenida la primera vez que entran a Pronósticos.
+  // Esperamos a que el contenido haya cargado (loading=false) para que los targets existan.
+  useEffect(() => {
+    if (!loading && !hasSeenOnboarding()) {
+      const id = setTimeout(() => setRunTour(true), 400)
+      return () => clearTimeout(id)
+    }
+  }, [loading])
 
   useEffect(() => {
     if (selectedPlanilla) loadBets(selectedPlanilla)
@@ -68,10 +82,15 @@ export function Apuestas() {
 
   // Live polling: refresh matches every 30s when live — pausa si el tab está oculto
   usePolling(() => {
-    api.get('/matches?limit=200').then(res => {
-      setMatches(res.data.data.matches)
-      setNow(Date.now())
-    }).catch(() => {})
+    api.get('/matches?limit=200')
+      .then(res => {
+        setMatches(res.data.data.matches)
+        setNow(Date.now())
+      })
+      .catch(err => {
+        const errMsg = err?.response?.data?.error || 'No se pudieron actualizar los partidos'
+        show(errMsg, 'error')
+      })
   }, 30_000, hasLive)
 
   const loadInitial = async () => {
@@ -106,6 +125,11 @@ export function Apuestas() {
   }
 
   const handleCreatePlanilla = async () => {
+    if (isTournamentClosed) {
+      show(t.bets.tournamentClosed, 'error')
+      setShowNewPlanilla(false)
+      return
+    }
     setCreatingPlanilla(true)
     try {
       const { data } = await api.post('/planillas')
@@ -127,7 +151,7 @@ export function Apuestas() {
     setLockingPlanilla(true)
     try {
       await api.put(`/planillas/${selectedPlanilla}/lock`)
-      setPlanillas(prev => prev.map(p => p.id === selectedPlanilla ? { ...p, precio_pagado: true } : p))
+      setPlanillas(prev => prev.map(p => p.id === selectedPlanilla ? { ...p, locked: true } : p))
       setShowConfirmModal(false)
       show(t.bets.planillaLocked, 'success')
     } catch {
@@ -147,8 +171,6 @@ export function Apuestas() {
 
   const filtered = matches
     .filter((m) => {
-      if (filter === 'pendientes' && m.estado === 'finished') return false
-      if (filter === 'finalizados' && m.estado !== 'finished') return false
       if (search) {
         const q = search.toLowerCase()
         return m.home_team.toLowerCase().includes(q) || m.away_team.toLowerCase().includes(q)
@@ -183,18 +205,44 @@ export function Apuestas() {
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#006d2e]">{t.bets.title}</h1>
+        <h1 className="text-xl font-bold text-[#001A4B]">{t.bets.title}</h1>
         <span className="text-sm text-gray-400">{progress.done}/{progress.total} {t.bets.completed}</span>
       </div>
 
+      {/* Invitar amigo — CTA compacto */}
+      <InviteFriendCTA variant="compact" />
+
+      {/* Push opt-in — solo si ya hay al menos un bet (entiende el valor) */}
+      {Object.keys(bets).length > 0 && <PushOptInBanner />}
+
+      {/* Caja de ayuda — se cierra con la X y vuelve a aparecer al recargar */}
+      {showHelp && (
+        <div className="relative bg-blue-50 border border-blue-200 rounded-xl section-animate px-4 py-3 pr-9 text-sm text-blue-900">
+          <button
+            onClick={() => setShowHelp(false)}
+            aria-label={t.bets.helpClose}
+            title={t.bets.helpClose}
+            className="absolute top-2 right-2 w-7 h-7 rounded-full text-blue-700 hover:bg-blue-100 flex items-center justify-center text-base leading-none transition-colors"
+          >
+            ×
+          </button>
+          <p className="font-semibold mb-1.5">{t.bets.helpTitle}</p>
+          <ol className="list-decimal list-inside space-y-1 text-blue-800">
+            <li>{t.bets.helpStep1}</li>
+            <li>{t.bets.helpStep2}</li>
+            <li>{t.bets.helpStep3}</li>
+          </ol>
+        </div>
+      )}
+
       {/* Selector de planilla + crear nueva */}
-      <div className="flex gap-2 items-center">
+      <div className="flex gap-2 items-center" data-tour="planilla-selector">
         {planillas.length > 0 ? (
           <div className="relative flex-1">
             <select
               value={selectedPlanilla}
               onChange={(e) => setSelectedPlanilla(e.target.value)}
-              className="w-full appearance-none border border-gray-200 t-text-nav rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#00923f] pr-8 font-medium transition-all"
+              className="w-full appearance-none border border-gray-200 t-text-nav rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#0042A5] pr-8 font-medium transition-all"
             >
               {planillas.map((p) => (
                 <option key={p.id} value={p.id}>{p.nombre_planilla}</option>
@@ -207,13 +255,16 @@ export function Apuestas() {
             {t.bets.noPlanillas}
           </div>
         )}
-        <button
-          onClick={() => setShowNewPlanilla(true)}
-          className="shrink-0 w-10 h-10 rounded-xl t-bg-primary t-text-on-primary font-bold text-lg flex items-center justify-center hover:opacity-90 transition-opacity"
-          title={t.bets.newPlanilla}
-        >
-          +
-        </button>
+        {!isTournamentClosed && (
+          <button
+            onClick={() => setShowNewPlanilla(true)}
+            data-tour="new-planilla"
+            className="shrink-0 w-10 h-10 rounded-xl t-bg-primary t-text-on-primary font-bold text-lg flex items-center justify-center hover:opacity-90 transition-opacity"
+            title={t.bets.newPlanilla}
+          >
+            +
+          </button>
+        )}
       </div>
 
       {/* Modal nueva planilla */}
@@ -250,7 +301,7 @@ export function Apuestas() {
       )}
 
       {/* Botón confirmar planilla */}
-      {selectedPlanillaObj && !selectedPlanillaObj.precio_pagado && (() => {
+      {selectedPlanillaObj && !selectedPlanillaObj.locked && (() => {
         const missing = pendingMatches.filter(m => !bets[m.id]).length
         const allDone = missing === 0 && pendingMatches.length > 0
         return (
@@ -259,7 +310,7 @@ export function Apuestas() {
             disabled={!allDone}
             className={`w-full font-bold py-3 rounded-xl text-sm transition-colors border-2 ${
               allDone
-                ? 'border-[#00923f] text-[#00923f] hover:bg-[#00923f] hover:text-white cursor-pointer'
+                ? 'border-[#0042A5] text-[#0042A5] hover:bg-[#0042A5] hover:text-white cursor-pointer'
                 : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed'
             }`}
           >
@@ -281,7 +332,7 @@ export function Apuestas() {
                   <span className="text-gray-700 truncate mr-2">
                     {teamFlag(m.home_team)} {m.home_team} vs {m.away_team} {teamFlag(m.away_team)}
                   </span>
-                  <span className="font-mono font-bold text-[#00923f] shrink-0">
+                  <span className="font-mono font-bold text-[#0042A5] shrink-0">
                     {bets[m.id].goles_local} – {bets[m.id].goles_visitante}
                   </span>
                 </div>
@@ -306,31 +357,14 @@ export function Apuestas() {
         </>
       )}
 
-      {/* Filtros + búsqueda */}
-      <div className="flex gap-2 items-center flex-wrap">
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-          {([
-            { key: 'todos',       label: t.bets.all },
-            { key: 'pendientes',  label: t.bets.pending },
-            { key: 'finalizados', label: t.bets.finished },
-          ] as const).map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setFilter(key)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                filter === key ? 'bg-white shadow text-[#00923f]' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+      {/* Búsqueda */}
+      <div className="flex gap-2 items-center flex-wrap" data-tour="filters">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t.bets.searchTeam}
-          className="flex-1 min-w-32 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#00923f] bg-white"
+          className="flex-1 min-w-32 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#0042A5] bg-white"
         />
       </div>
 
@@ -348,7 +382,8 @@ export function Apuestas() {
               match={m}
               bet={bets[m.id]}
               planillaId={selectedPlanilla || undefined}
-              planillaLocked={selectedPlanillaObj?.precio_pagado}
+              planillaLocked={selectedPlanillaObj?.locked}
+              tournamentClosed={isTournamentClosed}
               onBetSaved={() => loadBets(selectedPlanilla)}
               onBetDeleted={(mid) => { const nb = { ...bets }; delete nb[mid]; setBets(nb) }}
               now={now}
@@ -359,18 +394,18 @@ export function Apuestas() {
       )}
 
       {/* Lista de partidos */}
-      <div className="space-y-3">
+      <div className="space-y-3" data-tour="match-list">
         {filtered.length === 0 && (
           <EmptyState icon="⚽" message={t.bets.noMatches} />
         )}
-        {filtered.map((m, i) => (
+        {filtered.map((m) => (
           <Fragment key={m.id}>
-            {i === 2 && <AdCard />}
             <MatchCard
               match={m}
               bet={bets[m.id]}
               planillaId={selectedPlanilla || undefined}
-              planillaLocked={selectedPlanillaObj?.precio_pagado}
+              planillaLocked={selectedPlanillaObj?.locked}
+              tournamentClosed={isTournamentClosed}
               onBetSaved={() => loadBets(selectedPlanilla)}
               onBetDeleted={(mid) => { const nb = { ...bets }; delete nb[mid]; setBets(nb) }}
               now={now}
@@ -378,6 +413,9 @@ export function Apuestas() {
           </Fragment>
         ))}
       </div>
+
+      <OnboardingTour run={runTour} onFinish={() => setRunTour(false)} />
+      <PushPromptModal delayMs={800} />
     </div>
   )
 }

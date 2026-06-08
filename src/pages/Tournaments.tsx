@@ -3,8 +3,10 @@ import { format, type Locale } from 'date-fns'
 import { es as esLocale, pt as ptLocale } from 'date-fns/locale'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
+import { useToastStore } from '@/store/toastStore'
 import { useT } from '@/hooks/useT'
-import { Spinner } from '@/components/ui/Spinner'
+import { Sk, SkTournamentMatchRow, SkTournamentRankRow } from '@/components/ui/Skeleton'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { teamFlag } from '@/utils/teamFlags'
 import type { Tournament, Match } from '@/types'
 
@@ -12,6 +14,9 @@ interface TournamentRankingEntry {
   user_id: string
   user_name: string
   user_avatar?: string
+  planilla_id: string
+  nombre_planilla: string
+  precio_pagado?: boolean
   puntos: number
   total_aciertos: number
   total_exactos: number
@@ -19,8 +24,26 @@ interface TournamentRankingEntry {
   position?: number
 }
 
+function TournamentsSkeleton() {
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
+      <Sk className="h-7 w-40 rounded" />
+      <div className="bg-gradient-to-r from-[#001A4B] to-[#0042A5] rounded-2xl p-5 space-y-2">
+        <Sk className="h-5 w-48 rounded bg-white/20" />
+        <Sk className="h-3 w-64 rounded bg-white/20" />
+        <Sk className="h-3 w-32 rounded bg-white/20 mt-3" />
+      </div>
+      <Sk className="h-9 w-48 rounded-xl" />
+      <div className="space-y-2">
+        {[0, 1, 2, 3, 4].map(i => <SkTournamentMatchRow key={i} />)}
+      </div>
+    </div>
+  )
+}
+
 export function Tournaments() {
   const { user } = useAuthStore()
+  const { show } = useToastStore()
   const t = useT()
   const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [selected, setSelected] = useState<string>('')
@@ -40,7 +63,10 @@ export function Tournaments() {
         setTournaments(list)
         if (list.length > 0) setSelected(list[0].id)
       })
-      .catch(() => setTournaments([]))
+      .catch(() => {
+        setTournaments([])
+        show(t.tournaments.errorLoad, 'error')
+      })
       .finally(() => setLoadingTournaments(false))
   }, [])
 
@@ -53,11 +79,17 @@ export function Tournaments() {
         const all: Match[] = data.data.matches || []
         setMatches(all.filter(m => m.tournament_id === selected))
       })
-      .catch(() => setMatches([]))
+      .catch(() => {
+        setMatches([])
+        show(t.tournaments.errorLoadMatches, 'error')
+      })
       .finally(() => setLoadingMatches(false))
     api.get(`/tournaments/${selected}/ranking`)
       .then(({ data }) => setRanking(data.data || []))
-      .catch(() => setRanking([]))
+      .catch(() => {
+        setRanking([])
+        show(t.tournaments.errorLoadRanking, 'error')
+      })
       .finally(() => setLoadingRanking(false))
   }, [selected])
 
@@ -68,18 +100,17 @@ export function Tournaments() {
   const finished = matches.filter(m => m.estado === 'finished')
   const pending = matches.filter(m => m.estado !== 'finished')
 
-  if (loadingTournaments) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>
+  if (loadingTournaments) return <TournamentsSkeleton />
 
   if (tournaments.length === 0) return (
-    <div className="max-w-2xl mx-auto px-4 py-10 text-center">
-      <div className="text-5xl mb-3">🏆</div>
-      <p className="text-gray-400">{t.tournaments.noActive}</p>
+    <div className="max-w-2xl mx-auto px-4">
+      <EmptyState icon="🏆" message={t.tournaments.noActive} />
     </div>
   )
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
-      <h1 className="text-xl font-bold text-[#006d2e]">{t.tournaments.title}</h1>
+      <h1 className="text-xl font-bold text-[#001A4B]">{t.tournaments.title}</h1>
 
       {/* Selector de torneo */}
       {tournaments.length > 1 && (
@@ -88,7 +119,7 @@ export function Tournaments() {
             <button
               key={tour.id}
               onClick={() => setSelected(tour.id)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all ${selected === tour.id ? 'border-[#00923f] bg-blue-50 text-[#00923f]' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all ${selected === tour.id ? 'border-[#0042A5] bg-blue-50 text-[#0042A5]' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
             >
               {tour.name}
             </button>
@@ -98,7 +129,7 @@ export function Tournaments() {
 
       {/* Info del torneo */}
       {selectedTournament && (
-        <div className="bg-gradient-to-r from-[#003d1c] to-[#00923f] rounded-2xl p-5 text-white">
+        <div className="bg-gradient-to-r from-[#001A4B] to-[#0042A5] rounded-2xl p-5 text-white">
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-lg font-bold">{selectedTournament.name}</h2>
@@ -125,14 +156,14 @@ export function Tournaments() {
 
       {/* Mi posición */}
       {myEntry && (
-        <div className="bg-white rounded-xl border-2 border-[#00923f] p-4 flex items-center gap-4">
-          <div className="text-2xl font-black text-[#00923f]">#{myEntry.posicion || myEntry.position}</div>
+        <div className="bg-white rounded-xl border-2 border-[#0042A5] p-4 flex items-center gap-4">
+          <div className="text-2xl font-black text-[#0042A5]">#{myEntry.posicion || myEntry.position}</div>
           <div className="flex-1">
-            <p className="font-semibold text-[#006d2e] text-sm">{t.tournaments.myPosition}</p>
+            <p className="font-semibold text-[#001A4B] text-sm">{t.tournaments.myPosition}</p>
             <p className="text-xs text-gray-400">{myEntry.total_exactos} {t.tournaments.exacts} · {myEntry.total_aciertos} {t.tournaments.hits}</p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-black text-[#ffffff] [text-shadow:0_1px_2px_rgba(0,0,0,0.2)]">{myEntry.puntos}</p>
+            <p className="text-2xl font-black text-[#FFDF00] [text-shadow:0_1px_2px_rgba(0,0,0,0.2)]">{myEntry.puntos}</p>
             <p className="text-xs text-gray-400">{t.tournaments.pts}</p>
           </div>
         </div>
@@ -142,13 +173,13 @@ export function Tournaments() {
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
         <button
           onClick={() => setTab('partidos')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${tab === 'partidos' ? 'bg-white shadow text-[#00923f]' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${tab === 'partidos' ? 'bg-white shadow text-[#0042A5]' : 'text-gray-500 hover:text-gray-700'}`}
         >
           {t.tournaments.tabMatches} {matches.length > 0 && <span className="ml-1 text-xs opacity-60">{matches.length}</span>}
         </button>
         <button
           onClick={() => setTab('ranking')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${tab === 'ranking' ? 'bg-white shadow text-[#00923f]' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${tab === 'ranking' ? 'bg-white shadow text-[#0042A5]' : 'text-gray-500 hover:text-gray-700'}`}
         >
           {t.tournaments.tabRanking} {ranking.length > 0 && <span className="ml-1 text-xs opacity-60">{ranking.length}</span>}
         </button>
@@ -157,11 +188,12 @@ export function Tournaments() {
       {/* Tab: Partidos */}
       {tab === 'partidos' && (
         loadingMatches ? (
-          <div className="flex justify-center py-10"><Spinner /></div>
+          <div className="space-y-2">
+            {[0, 1, 2, 3, 4].map(i => <SkTournamentMatchRow key={i} />)}
+          </div>
         ) : matches.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
-            <div className="text-3xl mb-2">⚽</div>
-            <p className="text-gray-400 text-sm">{t.tournaments.noMatches}</p>
+          <div className="bg-white rounded-xl border border-gray-100">
+            <EmptyState icon="⚽" message={t.tournaments.noMatches} />
           </div>
         ) : (
           <div className="space-y-2">
@@ -188,12 +220,12 @@ export function Tournaments() {
       {/* Tab: Ranking */}
       {tab === 'ranking' && (
         loadingRanking ? (
-          <div className="flex justify-center py-10"><Spinner /></div>
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+            {[0, 1, 2, 3, 4, 5].map(i => <SkTournamentRankRow key={i} />)}
+          </div>
         ) : ranking.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
-            <div className="text-3xl mb-2">📊</div>
-            <p className="text-gray-400 text-sm">{t.tournaments.noRanking}</p>
-            <p className="text-gray-300 text-xs mt-1">{t.tournaments.noRankingDesc}</p>
+          <div className="bg-white rounded-xl border border-gray-100">
+            <EmptyState icon="📊" message={t.tournaments.noRanking} description={t.tournaments.noRankingDesc} />
           </div>
         ) : (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
@@ -209,7 +241,7 @@ export function Tournaments() {
               const isMe = r.user_id === user?.id
               return (
                 <div
-                  key={r.user_id}
+                  key={r.planilla_id || `${r.user_id}-${i}`}
                   className={`grid grid-cols-[2rem_1fr_auto_auto_auto] gap-2 items-center px-4 py-3 ${i < ranking.length - 1 ? 'border-b border-gray-50' : ''} ${isMe ? 'bg-blue-50' : ''}`}
                 >
                   <span className="text-sm font-bold text-gray-400">
@@ -218,17 +250,22 @@ export function Tournaments() {
                   <div className="min-w-0 flex items-center gap-2">
                     {r.user_avatar
                       ? <img src={r.user_avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-                      : <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isMe ? 'bg-[#00923f] text-white' : 'bg-gray-200 text-gray-600'}`}>
+                      : <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isMe ? 'bg-[#0042A5] text-white' : 'bg-gray-200 text-gray-600'}`}>
                           {(r.user_name || '?')[0].toUpperCase()}
                         </div>
                     }
-                    <p className={`text-sm font-semibold truncate ${isMe ? 'text-[#00923f]' : 'text-[#006d2e]'}`}>
-                      {r.user_name} {isMe && <span className="text-xs font-normal">{t.tournaments.you}</span>}
-                    </p>
+                    <div className="min-w-0">
+                      <p className={`text-sm font-semibold truncate ${isMe ? 'text-[#0042A5]' : 'text-[#001A4B]'}`}>
+                        {r.user_name} {isMe && <span className="text-xs font-normal">{t.tournaments.you}</span>}
+                      </p>
+                      {r.nombre_planilla && (
+                        <p className="text-xs text-gray-400 truncate">{r.nombre_planilla}</p>
+                      )}
+                    </div>
                   </div>
                   <span className="text-xs text-center text-gray-500 hidden sm:block">{r.total_exactos}</span>
                   <span className="text-xs text-center text-gray-500 hidden sm:block">{r.total_aciertos}</span>
-                  <span className="font-black text-[#00923f] text-right">{r.puntos}</span>
+                  <span className="font-black text-[#0042A5] text-right">{r.puntos}</span>
                 </div>
               )
             })}
@@ -255,13 +292,13 @@ function MatchRow({ match: m, dateLocale, live, final: finalLabel }: {
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="flex items-center gap-2 justify-end">
-          <span className="text-sm font-semibold text-[#006d2e] text-right leading-tight">{m.home_team}</span>
+          <span className="text-sm font-semibold text-[#001A4B] text-right leading-tight">{m.home_team}</span>
           {flagHome && <span className="text-xl shrink-0">{flagHome}</span>}
         </div>
 
         <div className="flex flex-col items-center gap-0.5 px-2 min-w-[64px]">
           {isFinished ? (
-            <span className="text-xl font-black text-[#006d2e] tabular-nums">
+            <span className="text-xl font-black text-[#001A4B] tabular-nums">
               {m.resultado_local} – {m.resultado_visitante}
             </span>
           ) : isLive ? (
@@ -281,7 +318,7 @@ function MatchRow({ match: m, dateLocale, live, final: finalLabel }: {
 
         <div className="flex items-center gap-2">
           {flagAway && <span className="text-xl shrink-0">{flagAway}</span>}
-          <span className="text-sm font-semibold text-[#006d2e] leading-tight">{m.away_team}</span>
+          <span className="text-sm font-semibold text-[#001A4B] leading-tight">{m.away_team}</span>
         </div>
       </div>
     </div>

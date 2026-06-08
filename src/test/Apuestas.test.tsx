@@ -24,7 +24,6 @@ vi.mock('@/utils/teamFlags', () => ({
   teamAbbr: (name: string) => name.slice(0, 3).toUpperCase(),
 }))
 
-vi.mock('@/components/ui/AdCard', () => ({ AdCard: () => null }))
 
 // MatchCard mockeado para no duplicar su lógica
 vi.mock('@/components/match/MatchCard', () => ({
@@ -111,40 +110,6 @@ describe('Apuestas — renderizado básico', () => {
 describe('Apuestas — filtros', () => {
   afterEach(() => vi.clearAllMocks())
 
-  it('filtro Pendientes oculta partidos finalizados', async () => {
-    const user = userEvent.setup()
-    const matches = [makeMatch('m1', 'scheduled'), makeMatch('m2', 'finished')]
-    await setupApi({ matches })
-    renderApuestas()
-
-    await waitFor(() => {
-      expect(screen.getAllByTestId('match-card').length).toBeGreaterThanOrEqual(2)
-    }, { timeout: 3000 })
-
-    await user.click(screen.getByText(/^Pendientes$/i))
-    // Solo queda el partido pendiente
-    await waitFor(() => {
-      expect(screen.getAllByTestId('match-card').length).toBe(1)
-      expect(screen.getByText(/Homem1/)).toBeInTheDocument()
-    })
-  })
-
-  it('filtro Finalizados oculta pendientes', async () => {
-    const user = userEvent.setup()
-    const matches = [makeMatch('m1', 'scheduled'), makeMatch('m2', 'finished')]
-    await setupApi({ matches })
-    renderApuestas()
-
-    await waitFor(() => {
-      expect(screen.getAllByTestId('match-card').length).toBeGreaterThanOrEqual(2)
-    }, { timeout: 3000 })
-
-    await user.click(screen.getByText(/^Finalizados$/i))
-    await waitFor(() => {
-      expect(screen.getAllByTestId('match-card').length).toBe(1)
-      expect(screen.getByText(/Homem2/)).toBeInTheDocument()
-    })
-  })
 
   it('búsqueda filtra por nombre de equipo', async () => {
     const user = userEvent.setup()
@@ -161,6 +126,30 @@ describe('Apuestas — filtros', () => {
     await waitFor(() => {
       expect(screen.getAllByTestId('match-card').length).toBe(1)
     })
+  })
+})
+
+describe('Apuestas — cutoff de torneo', () => {
+  afterEach(() => vi.clearAllMocks())
+
+  it('muestra botón + nueva planilla cuando el torneo está abierto', async () => {
+    const future = new Date(Date.now() + 3600_000).toISOString()
+    const openMatch = { ...makeMatch('m1'), time_cutoff: future }
+    await setupApi({ matches: [openMatch] })
+    renderApuestas()
+    await waitFor(() => {
+      expect(screen.getByTitle(/Nueva planilla/i)).toBeInTheDocument()
+    }, { timeout: 3000 })
+  })
+
+  it('oculta botón + nueva planilla cuando el torneo cerró', async () => {
+    const past = new Date(Date.now() - 3600_000).toISOString()
+    const closedMatch = { ...makeMatch('m1'), time_cutoff: past, estado: 'scheduled' as const, finished: false }
+    await setupApi({ matches: [closedMatch] })
+    renderApuestas()
+    await waitFor(() => {
+      expect(screen.queryByTitle(/Nueva planilla/i)).toBeNull()
+    }, { timeout: 3000 })
   })
 })
 

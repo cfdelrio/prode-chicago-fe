@@ -25,7 +25,6 @@ vi.mock('@/utils/teamFlags', () => ({
   teamAbbr: (name: string) => name.slice(0, 3).toUpperCase(),
 }))
 
-vi.mock('@/components/ui/AdCard', () => ({ AdCard: () => null }))
 
 vi.mock('@/components/match/MatchCard', () => ({
   MatchCard: ({ match }: { match: { id: string; home_team: string; away_team: string } }) => (
@@ -176,7 +175,7 @@ describe('Matriz — mismo usuario con dos planillas', () => {
     expect(p2Labels.length).toBeGreaterThan(0)
   })
 
-  it('planilla no pagada de Carlos muestra badge IMPAGA', async () => {
+  it('planilla no pagada de Carlos muestra badge IMPAGO', async () => {
     await setupMatrizApi([ROW_CARLOS_1, ROW_CARLOS_2, ROW_ANA])
     render(<MemoryRouter><Matriz /></MemoryRouter>)
 
@@ -184,8 +183,8 @@ describe('Matriz — mismo usuario con dos planillas', () => {
       expect(screen.getAllByText('Carlos').length).toBeGreaterThanOrEqual(2)
     }, { timeout: 3000 })
 
-    // ROW_CARLOS_2 tiene precio_pagado: false → badge IMPAGA visible
-    const impagaLabels = screen.queryAllByText(/IMPAGA/i)
+    // ROW_CARLOS_2 tiene precio_pagado: false → badge IMPAGO visible
+    const impagaLabels = screen.queryAllByText(/IMPAGO/i)
     expect(impagaLabels.length).toBeGreaterThan(0)
   })
 })

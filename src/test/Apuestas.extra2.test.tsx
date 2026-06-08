@@ -26,7 +26,6 @@ vi.mock('@/utils/teamFlags', () => ({
   teamAbbr: (name: string) => name.slice(0, 3).toUpperCase(),
 }))
 
-vi.mock('@/components/ui/AdCard', () => ({ AdCard: () => null }))
 
 vi.mock('@/components/match/MatchCard', () => ({
   MatchCard: ({
@@ -269,27 +268,6 @@ describe('Apuestas — callbacks de MatchCard en lista principal', () => {
   })
 })
 
-// ─── Filtro "Todos" (click explícito) ─────────────────────────────────────────
-
-describe('Apuestas — tab Todos', () => {
-  afterEach(() => vi.clearAllMocks())
-
-  it('click en Todos restaura todos los partidos tras filtrar', async () => {
-    const user = userEvent.setup()
-    await setupApi({ matches: [makePending('m1'), makeFinished('m2')] })
-    renderApuestas()
-
-    await waitFor(() => expect(screen.getAllByTestId('match-card').length).toBe(2), { timeout: 3000 })
-
-    // Filtrar a Finalizados
-    await user.click(screen.getByRole('button', { name: /^Finalizados$/i }))
-    await waitFor(() => expect(screen.getAllByTestId('match-card').length).toBe(1))
-
-    // Volver a Todos
-    await user.click(screen.getByRole('button', { name: /^Todos$/i }))
-    await waitFor(() => expect(screen.getAllByTestId('match-card').length).toBe(2))
-  })
-})
 
 // ─── Planilla ya pagada no muestra botón de confirmar ─────────────────────────
 

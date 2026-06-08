@@ -6,28 +6,34 @@
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && cp dist/index.html dist/landing.html",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage --coverage.provider=istanbul",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test:championship": "playwright test --project=championship --workers=1",
+    "test:championship:ui": "playwright test --project=championship --workers=1 --ui",
+    "test:championship:debug": "playwright test --project=championship --debug"
   },
   "dependencies": {
-    "@tailwindcss/oxide-linux-x64-gnu": "^4.2.2",
     "axios": "^1.15.0",
     "date-fns": "^4.1.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-joyride": "^3.1.0",
     "react-router-dom": "^6.30.3",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@tailwindcss/oxide-linux-x64-gnu": "^4.2.2",
     "@eslint/js": "^9.25.0",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/vite": "^4.2.2",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

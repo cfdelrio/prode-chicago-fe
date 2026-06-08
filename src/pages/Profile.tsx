@@ -1,10 +1,16 @@
 import { useRef, useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { useToastStore } from '@/store/toastStore'
 import { useT } from '@/hooks/useT'
 import { TEAM_THEMES } from '@/types'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { resetOnboarding } from '@/components/onboarding/Tour'
+import { WhatsAppQRCard } from '@/components/WhatsAppQRCard'
+import { Button } from '@/components/ui/Button'
+import { BadgesGrid } from '@/components/BadgesGrid'
+import { useGamification } from '@/hooks/useGamification'
 
 const COUNTRY_CODES = [
   { code: '+54', flag: '🇦🇷', name: 'Argentina' },
@@ -17,6 +23,7 @@ const COUNTRY_CODES = [
   { code: '+58', flag: '🇻🇪', name: 'Venezuela' },
   { code: '+52', flag: '🇲🇽', name: 'México' },
   { code: '+34', flag: '🇪🇸', name: 'España' },
+  { code: '+212', flag: '🇲🇦', name: 'Marruecos' },
   { code: '+1', flag: '🇺🇸', name: 'EE.UU.' },
 ]
 
@@ -47,13 +54,19 @@ function parsePhone(full: string): { code: string; local: string } {
   if (!full) return { code: '+54', local: '' }
   const match = COUNTRY_CODES.find(c => full.startsWith(c.code))
   if (match) return { code: match.code, local: full.slice(match.code.length) }
-  return { code: '+54', local: full.replace(/^\+/, '') }
+  // Handle numbers without + (e.g., "541155996222" becomes code: "+54", local: "1155996222")
+  const withoutPlus = full.replace(/^\+/, '')
+  const numMatch = COUNTRY_CODES.find(c => withoutPlus.startsWith(c.code.slice(1)))
+  if (numMatch) return { code: numMatch.code, local: withoutPlus.slice(numMatch.code.length - 1) }
+  return { code: '+54', local: withoutPlus }
 }
 
 export function Profile() {
   const { user, updateUser } = useAuthStore()
   const { show } = useToastStore()
   const t = useT()
+  const { data: gamification } = useGamification(user?.id ?? null)
+  const navigate = useNavigate()
   const fileRef = useRef<HTMLInputElement>(null)
   const [editName, setEditName] = useState(false)
   const [nombre, setNombre] = useState(user?.nombre || '')
@@ -134,26 +147,28 @@ export function Profile() {
     show(t.profile.themeActivated(TEAM_THEMES[tema]?.name || tema), 'success')
     try {
       await api.put(`/users/${user!.id}`, { tema_equipo: tema })
-    } catch { /* silent */ }
+    } catch {
+      show(t.profile.errorTheme, 'warning')
+    }
   }
 
   if (!user) return null
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-      <h1 className="text-xl font-bold text-[#006d2e]">{t.profile.title}</h1>
+      <h1 className="text-xl font-bold text-[#001A4B]">{t.profile.title}</h1>
 
       {/* Foto y nombre */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <div className="flex items-center gap-5">
           <div className="relative cursor-pointer" onClick={() => fileRef.current?.click()}>
             {user.foto_url
-              ? <img src={user.foto_url} alt="" className="w-20 h-20 rounded-full object-cover border-4 border-[#00923f]/20" />
-              : <div className="w-20 h-20 rounded-full bg-[#00923f] flex items-center justify-center text-3xl text-white font-bold">
+              ? <img src={user.foto_url} alt="" className="w-20 h-20 rounded-full object-cover border-4 border-[#0042A5]/20" />
+              : <div className="w-20 h-20 rounded-full bg-[#0042A5] flex items-center justify-center text-3xl text-white font-bold">
                   {user.nombre[0].toUpperCase()}
                 </div>
             }
-            <div className="absolute bottom-0 right-0 bg-[#ffffff] rounded-full p-1 shadow text-sm leading-none">
+            <div className="absolute bottom-0 right-0 bg-[#FFDF00] rounded-full p-1 shadow text-sm leading-none">
               {uploadingPhoto ? '⏳' : '✏️'}
             </div>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
@@ -162,13 +177,13 @@ export function Profile() {
             {editName ? (
               <div className="flex gap-2">
                 <input value={nombre} onChange={(e) => setNombre(e.target.value)}
-                  className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]" />
-                <button onClick={handleSaveName} className="bg-[#00923f] text-white px-3 py-1.5 rounded-lg text-sm font-medium">{t.profile.save}</button>
+                  className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]" />
+                <button onClick={handleSaveName} className="bg-[#0042A5] text-white px-3 py-1.5 rounded-lg text-sm font-medium">{t.profile.save}</button>
                 <button onClick={() => setEditName(false)} className="text-gray-400 text-sm px-2">×</button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-[#006d2e] truncate">{user.nombre}</h2>
+                <h2 className="text-lg font-bold text-[#001A4B] truncate">{user.nombre}</h2>
                 <button onClick={() => setEditName(true)} className="text-gray-400 hover:text-gray-600 text-sm">✏️</button>
               </div>
             )}
@@ -182,7 +197,7 @@ export function Profile() {
 
       {/* Tema de equipo */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-        <h3 className="font-bold text-[#006d2e] mb-4">{t.profile.visualTheme}</h3>
+        <h3 className="font-bold text-[#001A4B] mb-4">{t.profile.visualTheme}</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 isolate">
           {Object.entries(TEAM_THEMES).map(([key, theme]) => {
             const isActive = user.tema_equipo === key
@@ -227,14 +242,28 @@ export function Profile() {
         </div>
       </div>
 
+      {/* Tour de bienvenida */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <button
+          onClick={() => {
+            resetOnboarding()
+            show(t.onboarding.restarted, 'info')
+            navigate('/apuestas')
+          }}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-blue-200 bg-blue-50 text-blue-800 font-semibold text-sm hover:bg-blue-100 transition-colors"
+        >
+          🎓 {t.onboarding.showAgain}
+        </button>
+      </div>
+
       {/* WhatsApp */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
-        <h3 className="font-bold text-[#006d2e]">{t.profile.whatsappTitle}</h3>
+        <h3 className="font-bold text-[#001A4B]">{t.profile.whatsappTitle}</h3>
         <div className="flex gap-2">
           <select
             value={waCountry}
             onChange={e => setWaCountry(e.target.value)}
-            className="border border-gray-200 rounded-xl px-2 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f] bg-white"
+            className="border border-gray-200 rounded-xl px-2 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5] bg-white"
           >
             {COUNTRY_CODES.map(c => (
               <option key={c.code} value={c.code}>{c.flag} {c.code}</option>
@@ -246,7 +275,7 @@ export function Profile() {
             onChange={e => setWaLocal(e.target.value.replace(/\D/g, ''))}
             placeholder={t.profile.whatsappPlaceholder}
             maxLength={12}
-            className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]"
+            className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]"
           />
         </div>
         <label className="flex items-start gap-3 cursor-pointer">
@@ -254,23 +283,33 @@ export function Profile() {
             type="checkbox"
             checked={waConsent}
             onChange={e => setWaConsent(e.target.checked)}
-            className="mt-0.5 w-4 h-4 accent-[#00923f] shrink-0"
+            className="mt-0.5 w-4 h-4 accent-[#0042A5] shrink-0"
           />
           <span className="text-xs text-gray-500 leading-relaxed">{t.profile.whatsappConsent}</span>
         </label>
-        <button
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">{t.profile.whatsappNotice}</p>
+        <Button
+          variant="dark"
+          fullWidth
           onClick={handleSaveWhatsapp}
           disabled={savingWa || (waConsent && !waNumber)}
-          className="w-full bg-[#006d2e] text-white text-sm font-bold py-2.5 rounded-xl hover:bg-[#002870] transition-colors disabled:opacity-40"
+          loading={savingWa}
         >
           {savingWa ? '...' : t.profile.save}
-        </button>
+        </Button>
+
+        <div className="border-t border-gray-200 pt-4 mt-4">
+          <WhatsAppQRCard
+            title="📲 O escanea el código"
+            description="Escanea con WhatsApp para unirte al sandbox y recibir todas las novedades."
+          />
+        </div>
       </div>
 
       {/* Push Notifications */}
       {push.state !== 'unsupported' && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
-          <h3 className="font-bold text-[#006d2e]">🔔 Notificaciones push</h3>
+          <h3 className="font-bold text-[#001A4B]">🔔 Notificaciones push</h3>
           <p className="text-xs text-gray-500 leading-relaxed">
             Recibí alertas en tu dispositivo cuando se publique un resultado, cuando tu partido esté por comenzar o cuando seas el nuevo líder del ranking — incluso con la app cerrada.
           </p>
@@ -288,14 +327,35 @@ export function Profile() {
               {push.loading ? '...' : '🔕 Desactivar notificaciones'}
             </button>
           ) : (
-            <button
+            <Button
+              variant="dark"
+              fullWidth
               onClick={push.subscribe}
               disabled={push.loading || push.state === 'denied'}
-              className="w-full bg-[#006d2e] text-white text-sm font-bold py-2.5 rounded-xl hover:bg-[#002870] transition-colors disabled:opacity-40"
+              loading={push.loading}
             >
               {push.loading ? '...' : '🔔 Activar notificaciones'}
-            </button>
+            </Button>
           )}
+        </div>
+      )}
+
+      {(gamification.badges.length > 0 || gamification.streaks.length > 0) && (
+        <div className="bg-white rounded-2xl shadow p-4 mt-4">
+          <h3 className="text-base font-bold text-[#001A4B] mb-3">🏅 Logros</h3>
+          {gamification.streaks.length > 0 && (
+            <div className="mb-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3">
+              {gamification.streaks.map(s => (
+                <div key={s.streak_type} className="text-sm text-orange-800 dark:text-orange-200">
+                  🔥 Llevás <strong>{s.current_streak}</strong> exactos seguidos en {s.nombre_planilla}
+                  {s.best_streak > s.current_streak && (
+                    <span className="opacity-70"> (mejor: {s.best_streak})</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <BadgesGrid badges={gamification.badges} />
         </div>
       )}
 

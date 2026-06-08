@@ -22,10 +22,6 @@ vi.mock('@/hooks/usePWAInstall', () => ({
   usePWAInstall: () => ({ state: { type: 'unavailable' }, install: vi.fn() }),
 }))
 
-vi.mock('@/components/ui/AdCard', () => ({
-  AdCard: () => null,
-}))
-
 vi.mock('@/pages/LeaderHome', () => ({
   LeaderHome: () => <div data-testid="leader-home" />,
 }))

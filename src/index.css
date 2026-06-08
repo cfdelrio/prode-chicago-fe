@@ -2,26 +2,100 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* ── GLOBAL ANIMATIONS (DESIGN_RULES.md ESPN VIBE) ──────────────────── */
+@keyframes flipDown {
+  from { transform: perspective(280px) rotateX(-82deg); }
+  to   { transform: perspective(280px) rotateX(0deg); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes slideInFromLeft {
+  from { transform: translateX(-30px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(16, 185, 129, 0.3), 0 0 20px rgba(255, 223, 0, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.5), 0 0 30px rgba(255, 223, 0, 0.3); }
+}
+@keyframes scoreboardPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.95; }
+}
+
+/* ── RANKING UX ANIMATIONS ─────────────────────────────────── */
+/* Position improved (green flash) */
+@keyframes rankUp {
+  0%   { background-color: rgba(16, 185, 129, 0.22); }
+  70%  { background-color: rgba(16, 185, 129, 0.10); }
+  100% { background-color: transparent; }
+}
+/* Position dropped (red fade) */
+@keyframes rankDown {
+  0%   { background-color: rgba(239, 68, 68, 0.16); }
+  70%  { background-color: rgba(239, 68, 68, 0.06); }
+  100% { background-color: transparent; }
+}
+/* New entry (gold sparkle) */
+@keyframes newEntry {
+  0%   { background-color: rgba(234, 179, 8, 0.20); }
+  70%  { background-color: rgba(234, 179, 8, 0.08); }
+  100% { background-color: transparent; }
+}
+/* Staggered row entrance — use --row-i CSS var for delay */
+@keyframes rowSlideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+/* Live pulse dot */
+@keyframes liveDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}
+
+.row-rank-up   { animation: rankUp   2.4s ease-out both; }
+.row-rank-down { animation: rankDown 2.4s ease-out both; }
+.row-rank-new  { animation: newEntry 2.4s ease-out both; }
+.row-entrance  {
+  animation: rowSlideIn 0.28s ease-out both;
+  animation-delay: calc(var(--row-i, 0) * 0.035s);
+}
+.live-dot { animation: liveDot 1.4s ease-in-out infinite; }
+
+.section-animate {
+  animation: slideUp 0.6s ease-out forwards;
+}
+.glow-card {
+  animation: glow 3s ease-in-out infinite;
+}
+
 /* ── THEME CSS VARIABLES ────────────────────────────────────────── */
 
 :root,
 [data-theme="neutral"] {
-  --theme-nav-bg:      #006d2e;
+  --theme-nav-bg:      #001A4B;
   --theme-nav-bg-2:    #002B7F;
-  --theme-primary:     #00923f;
-  --theme-secondary:   #ffffff;
-  --theme-accent-text: #006d2e;
+  --theme-primary:     #0042A5;
+  --theme-secondary:   #FFDF00;
+  --theme-accent-text: #001A4B;
   --theme-on-primary:  #ffffff;
+  --theme-page-accent: #0042A5;   /* primary — contraste 7.5:1 sobre blanco */
 }
 
 /* Boca Juniors — azul profundo / oro cálido */
 [data-theme="boca"] {
-  --theme-nav-bg:      #006d2e;
+  --theme-nav-bg:      #001A4B;
   --theme-nav-bg-2:    #00102E;
-  --theme-primary:     #005c28;
+  --theme-primary:     #003087;
   --theme-secondary:   #F5C500;
-  --theme-accent-text: #006d2e;
+  --theme-accent-text: #001A4B;
   --theme-on-primary:  #ffffff;
+  --theme-page-accent: #F5C500;   /* oro secundario — ~15:1 sobre fondo oscuro */
 }
 
 /* River Plate — rojo vivo sobre blanco (La Banda) */
@@ -32,6 +106,7 @@
   --theme-secondary:   #FFFFFF;
   --theme-accent-text: #B30000;
   --theme-on-primary:  #ffffff;
+  --theme-page-accent: #C8102E;   /* rojo primario — 5.1:1 sobre blanco */
 }
 
 /* Independiente — carmín muy oscuro (El Rojo del Abasto) */
@@ -42,6 +117,7 @@
   --theme-secondary:   #FFFFFF;
   --theme-accent-text: #5B0000;
   --theme-on-primary:  #ffffff;
+  --theme-page-accent: #FFFFFF;   /* blanco — max contraste sobre fondo oscuro */
 }
 
 /* Racing Club — celeste cielo + blanco (La Academia) */
@@ -52,6 +128,7 @@
   --theme-secondary:   #FFFFFF;
   --theme-accent-text: #1A6BAA;
   --theme-on-primary:  #ffffff;
+  --theme-page-accent: #1A6BAA;   /* nav-bg — 5.1:1 sobre blanco (primario falla 2.6:1) */
 }
 
 /* San Lorenzo — azul cobalto + rojo (El Ciclón) */
@@ -62,6 +139,7 @@
   --theme-secondary:   #CC0000;
   --theme-accent-text: #FFFFFF;
   --theme-on-primary:  #ffffff;
+  --theme-page-accent: #FF6666;   /* rojo brillante — 7:1 sobre fondo oscuro (secundario falla WCAG AA) */
 }
 
 /* Estudiantes de La Plata — granate oscuro (Pincharratas) */
@@ -72,6 +150,7 @@
   --theme-secondary:   #FFFFFF;
   --theme-accent-text: #6B0018;
   --theme-on-primary:  #ffffff;
+  --theme-page-accent: #9E001A;   /* granate — 5.8:1 sobre blanco */
 }
 
 /* Huracán — negro/carbón + rojo vivo (El Globo) */
@@ -82,6 +161,7 @@
   --theme-secondary:   #FFFFFF;
   --theme-accent-text: #1A1A1A;
   --theme-on-primary:  #ffffff;
+  --theme-page-accent: #FFFFFF;   /* blanco — max contraste sobre negro (rojo falla WCAG AA para texto normal) */
 }
 
 /* Argentina — celeste + blanco (La Albiceleste) */
@@ -91,6 +171,7 @@
   --theme-primary:     #75AADB;
   --theme-secondary:   #FFFFFF;
   --theme-accent-text: #1E4E8A;
+  --theme-page-accent: #1E4E8A;   /* azul profundo — 7.7:1 sobre blanco (primario falla 2.6:1) */
   /* on-primary = dark — celeste is light, white text fails WCAG (2.6:1).
      CSS fallback; applyTheme() auto-computes and overrides at runtime. */
   --theme-on-primary:  #1A1A1A;
@@ -112,6 +193,7 @@
   --theme-secondary:   #000000;
   --theme-accent-text: #FFFFFF;
   --theme-on-primary:  #ffffff;
+  --theme-page-accent: #00CC55;   /* verde brillante — 9.3:1 sobre fondo oscuro (primario y secundario fallan) */
 }
 
 /* ── PAGE-LEVEL THEME VARIABLES ─────────────────────────────────── */
@@ -178,6 +260,8 @@
 .t-text-nav          { color: var(--theme-nav-bg) !important; }
 .t-text-secondary    { color: var(--theme-secondary) !important; }
 .t-text-accent       { color: var(--theme-accent-text) !important; }
+/* Acento visible sobre page-surface — pasa WCAG en todos los temas claro/oscuro */
+.t-text-page-accent  { color: var(--theme-page-accent, var(--theme-primary)) !important; }
 /* Texto sobre role-color backgrounds — auto-computed por applyTheme() */
 .t-text-on-primary   { color: var(--theme-on-primary, #ffffff) !important; }
 .t-text-on-secondary { color: var(--theme-on-secondary, #1a1a1a) !important; }

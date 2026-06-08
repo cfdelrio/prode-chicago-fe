@@ -46,11 +46,12 @@ jobs:
 
       - name: Update coverage badge
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        continue-on-error: true
         uses: schneegans/dynamic-badges-action@v1.7.0
         with:
           auth: ${{ secrets.GIST_TOKEN }}
           gistID: 6eb515266a2c723d42eec2d6d5292979
-          filename: prode-caballito-fe-coverage.json
+          filename: prode-chicago-fe-coverage.json
           label: coverage
           message: ${{ steps.coverage.outputs.coverage }}
           valColorRange: ${{ steps.coverage.outputs.coverage }}

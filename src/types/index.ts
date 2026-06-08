@@ -63,6 +63,7 @@ export interface Planilla {
   user_id: string
   nombre_planilla: string
   precio_pagado: boolean
+  locked: boolean
   puntos_totales?: number
   exactos_count?: number
   total_bets?: number
@@ -147,6 +148,35 @@ export interface Score {
 
 export type PointColor = 'celeste' | 'rojo' | 'verde' | 'amarillo' | 'gris'
 
+export interface UserStreak {
+  streak_type: string
+  current_streak: number
+  best_streak: number
+  nombre_planilla: string
+}
+
+export interface UserBadge {
+  badge_type: string
+  badge_data: Record<string, unknown> | null
+  awarded_at: string
+}
+
+export interface GamificationSummary {
+  streaks: UserStreak[]
+  badges: UserBadge[]
+  rivalries_count: number
+}
+
+export const BADGE_LABELS: Record<string, { emoji: string; label: string; description: string }> = {
+  primer_exacto: { emoji: '🎯', label: 'Primer Exacto', description: 'Acertaste tu primer resultado exacto' },
+  racha_3_exactos: { emoji: '🔥', label: 'Racha x3', description: '3 exactos consecutivos' },
+  racha_5_exactos: { emoji: '🔥🔥', label: 'Racha x5', description: '5 exactos consecutivos' },
+  racha_10_exactos: { emoji: '👑', label: 'Imparable', description: '10 exactos consecutivos' },
+  lider_primera_vez: { emoji: '🏆', label: 'Llegaste al #1', description: 'Por primera vez en la cima del ranking' },
+  tapado_de_la_fecha: { emoji: '🎭', label: 'Tapado de la fecha', description: 'Mejor ratio de aciertos en una jornada' },
+  mayor_caida: { emoji: '📉', label: 'Mayor caída', description: 'Mayor caída en el ranking en una jornada' },
+}
+
 export const TEAM_THEMES: Record<string, {
   primary: string; secondary: string; name: string
   pattern?: string   // CSS background para el preview strip de la camiseta
@@ -154,21 +184,14 @@ export const TEAM_THEMES: Record<string, {
   ring?: string      // color del borde activo
   badgeUrl?: string  // URL del escudo del club (opcional, fallback a inicial)
 }> = {
-  // Neutral — colores de Nueva Chicago (verde/negro)
+  // Neutral — azul/amarillo genérico de fútbol
   neutral: {
-    primary: '#00923f', secondary: '#040404', name: 'Nueva Chicago',
-  },
-  // Nueva Chicago — El Torito de Mataderos (verde + negro)
-  nuevachicago: {
-    primary: '#00923f', secondary: '#040404', name: 'Nueva Chicago',
-    pattern: 'linear-gradient(180deg, #00923f 50%, #040404 50%)',
-    fg: '#FFFFFF', ring: '#00923f',
-    badgeUrl: 'https://canuevachicago.com.ar/wp-content/uploads/leaguemanager/131px-Escudo_del_Club_Nueva_Chicago.svg.png',
+    primary: '#0042A5', secondary: '#FFDF00', name: 'Neutral',
   },
   // Boca Juniors — azul profundo + banda amarilla horizontal
   boca: {
-    primary: '#005c28', secondary: '#F5C500', name: 'Boca Juniors',
-    pattern: 'linear-gradient(180deg, #006d2e 0% 33%, #F5C500 33% 67%, #006d2e 67% 100%)',
+    primary: '#003087', secondary: '#F5C500', name: 'Boca Juniors',
+    pattern: 'linear-gradient(180deg, #001A4B 0% 33%, #F5C500 33% 67%, #001A4B 67% 100%)',
     fg: '#F5C500', ring: '#F5C500',
     badgeUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Escudo_del_Club_Atl%C3%A9tico_Boca_Juniors.svg/250px-Escudo_del_Club_Atl%C3%A9tico_Boca_Juniors.svg.png',
   },

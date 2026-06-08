@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
+import { useToastStore } from '@/store/toastStore'
 import { useT } from '@/hooks/useT'
 import { useMatches } from '@/hooks/useMatches'
 import { usePlanilla } from '@/hooks/usePlanilla'
@@ -44,8 +46,21 @@ function PlanillaSkeleton() {
 export function Planilla() {
   const { planillaId } = useParams<{ planillaId: string }>()
   const { user } = useAuthStore()
+  const { show } = useToastStore()
   const t = useT()
   const [filter, setFilter] = useState<'todos' | 'pendientes' | 'finalizados'>('todos')
+  const [ownerAvatar, setOwnerAvatar] = useState<string | null>(null)
+  const [ownerName, setOwnerName] = useState('')
+  const [avatarFullscreen, setAvatarFullscreen] = useState(false)
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      show(t.planilla.linkCopied, 'success')
+    } catch {
+      show(t.planilla.linkCopyError, 'error')
+    }
+  }
 
   const { planilla, loading: loadingPlanilla } = usePlanilla(planillaId)
   const { matches, loading: loadingMatches }   = useMatches(200)
@@ -57,6 +72,21 @@ export function Planilla() {
   const isAdmin = user?.rol === 'admin'
   const canEdit = isOwner || isAdmin
 
+  useEffect(() => {
+    if (!planilla) return
+    if (planilla.user_id === user?.id) {
+      setOwnerAvatar(user?.foto_url ?? null)
+      setOwnerName(user?.nombre ?? '')
+    } else {
+      api.get(`/users/${planilla.user_id}`)
+        .then(r => {
+          setOwnerAvatar(r.data.data.foto_url ?? null)
+          setOwnerName(r.data.data.nombre ?? '')
+        })
+        .catch(() => {})
+    }
+  }, [planilla?.user_id, user?.id, user?.foto_url, user?.nombre])
+
   const filtered = matches.filter((m) => {
     if (filter === 'pendientes') return m.estado !== 'finished'
     if (filter === 'finalizados') return m.estado === 'finished'
@@ -66,6 +96,7 @@ export function Planilla() {
   const totalBets = Object.keys(bets).length
   const pending = matches.filter(m => m.estado !== 'finished').length
   const betsDone = matches.filter(m => m.estado !== 'finished' && bets[m.id]).length
+  const tournamentClosed = matches.length > 0 && Date.now() > Math.min(...matches.map(m => new Date(m.time_cutoff).getTime()))
   const pts = planilla?.puntos_totales || 0
   const exactos = planilla?.exactos_count || 0
 
@@ -83,22 +114,50 @@ export function Planilla() {
   if (!planilla) return (
     <div className="max-w-2xl mx-auto px-4 py-10 text-center">
       <p className="text-gray-400">{t.planilla.notFound}</p>
-      <Link to="/profile" className="text-[#00923f] text-sm hover:underline mt-2 block">{t.planilla.back}</Link>
+      <Link to="/profile" className="text-[#0042A5] text-sm hover:underline mt-2 block">{t.planilla.back}</Link>
     </div>
   )
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-center gap-3">
+      {/* Header: back + copy */}
+      <div className="flex items-center justify-between">
         <Link to="/profile" className="-ml-1 flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors shrink-0" aria-label="Volver">
           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 t-text-nav" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
         </Link>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-[#006d2e]">{planilla.nombre_planilla}</h1>
-          <div className="flex gap-2 mt-0.5">
+        <button
+          onClick={handleCopyLink}
+          className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors shrink-0 text-[#001A4B]"
+          aria-label={t.planilla.copyLink}
+          title={t.planilla.copyLink}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 015.656 0l1.415 1.415a4 4 0 010 5.656l-2.829 2.829a4 4 0 01-5.656 0l-1.415-1.415m0-7.07L9.172 13.829a4 4 0 000 5.656l1.415 1.415m2.828-9.9a4 4 0 015.656 0l1.415 1.415a4 4 0 010 5.656l-2.829 2.829" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Owner card */}
+      <div className="flex flex-col items-center gap-1.5 -mt-1 pb-1">
+        <button
+          onClick={() => ownerAvatar && setAvatarFullscreen(true)}
+          disabled={!ownerAvatar}
+          className={`rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0042A5] focus-visible:ring-offset-2 ${ownerAvatar ? 'cursor-pointer active:scale-95 transition-transform' : 'cursor-default'}`}
+          aria-label={ownerAvatar ? 'Ver foto completa' : undefined}
+        >
+          {ownerAvatar
+            ? <img src={ownerAvatar} alt="" className="w-20 h-20 rounded-full object-cover border-4 border-[#0042A5]/20 shadow-md" />
+            : <div className="w-20 h-20 rounded-full bg-[#0042A5] flex items-center justify-center text-3xl font-black text-white shadow-md">
+                {(ownerName || planilla.nombre_planilla)[0]?.toUpperCase()}
+              </div>
+          }
+        </button>
+        {ownerName && <p className="text-sm font-semibold text-[#001A4B]">{ownerName}</p>}
+        <div className="text-center">
+          <h1 className="text-xl font-bold text-[#001A4B] truncate max-w-xs">{planilla.nombre_planilla}</h1>
+          <div className="flex justify-center gap-2 mt-0.5 flex-wrap">
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${planilla.precio_pagado ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-600'}`}>
-              {planilla.precio_pagado ? t.planilla.paid : t.planilla.unpaid}
+              {planilla.precio_pagado ? t.planilla.paid : 'IMPAGO'}
             </span>
             {!planilla.precio_pagado && (
               <span className="text-xs text-orange-500">{t.planilla.notInRanking}</span>
@@ -110,11 +169,11 @@ export function Planilla() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-          <p className="text-3xl font-black text-[#00923f]">{pts}</p>
+          <p className="text-3xl font-black text-[#0042A5]">{pts}</p>
           <p className="text-xs text-gray-400 mt-1">{t.planilla.totalPoints}</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-          <p className="text-3xl font-black text-[#006d2e]">{exactos}</p>
+          <p className="text-3xl font-black text-[#001A4B]">{exactos}</p>
           <p className="text-xs text-gray-400 mt-1">{t.planilla.exacts}</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
@@ -149,7 +208,7 @@ export function Planilla() {
               </div>
               <div className="bg-gray-100 rounded-full h-1.5">
                 <div
-                  className="bg-[#ffffff] h-1.5 rounded-full transition-all"
+                  className="bg-[#FFDF00] h-1.5 rounded-full transition-all"
                   style={{ width: `${pending ? (betsDone / pending) * 100 : 0}%` }}
                 />
               </div>
@@ -166,7 +225,7 @@ export function Planilla() {
           ['finalizados', t.planilla.finishedFilter],
         ] as const).map(([f, label]) => (
           <button key={f} onClick={() => setFilter(f)}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${filter === f ? 'bg-white shadow text-[#00923f]' : 'text-gray-500'}`}>
+            className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${filter === f ? 'bg-white shadow text-[#0042A5]' : 'text-gray-500'}`}>
             {label}
           </button>
         ))}
@@ -181,14 +240,37 @@ export function Planilla() {
           <MatchCard
             key={m.id}
             match={m}
-            bet={bets[m.id]}
+            bet={canEdit || Date.now() > new Date(m.time_cutoff).getTime() ? bets[m.id] : undefined}
             planillaId={canEdit ? planillaId : undefined}
+            tournamentClosed={tournamentClosed}
             onBetSaved={refreshBets}
             onBetDeleted={(mid) => { const nb = { ...bets }; delete nb[mid]; setBets(nb) }}
             readonly={!canEdit}
           />
         ))}
       </div>
+
+      {/* Foto fullscreen */}
+      {avatarFullscreen && ownerAvatar && (
+        <div
+          className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center backdrop-blur-sm"
+          onClick={() => setAvatarFullscreen(false)}
+        >
+          <img
+            src={ownerAvatar}
+            alt={ownerName}
+            className="max-w-[88vw] max-h-[88vh] rounded-2xl object-contain shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setAvatarFullscreen(false)}
+            className="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-black/50 text-white text-xl hover:bg-black/70 transition-colors"
+            aria-label="Cerrar"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   )
 }

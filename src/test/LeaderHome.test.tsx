@@ -18,10 +18,6 @@ vi.mock('@/components/match/MatchCard', () => ({
   ),
 }))
 
-vi.mock('@/components/ui/AdCard', () => ({
-  AdCard: () => <div data-testid="ad-card" />,
-}))
-
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 function makeEntry(userId: string, pts: number, exactos = 2, pos = 1) {

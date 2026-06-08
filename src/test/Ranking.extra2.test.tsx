@@ -15,7 +15,6 @@ vi.mock('@/store/toastStore', () => ({
   useToastStore: () => ({ show: vi.fn() }),
 }))
 
-vi.mock('@/components/ui/AdCard', () => ({ AdCard: () => null }))
 
 vi.mock('@/api/client', () => ({
   api: { get: vi.fn(), post: vi.fn() },
@@ -107,11 +106,12 @@ describe('Ranking — compartir desde drawer', () => {
     await setupApi()
     renderRanking()
 
-    await waitFor(() => expect(screen.getByText('Ana García')).toBeInTheDocument(), { timeout: 3000 })
+    await waitFor(() => expect(screen.getAllByText('Carlos Foo').length).toBeGreaterThan(0), { timeout: 3000 })
 
-    // Abrir drawer de Ana
-    await user.click(screen.getByText('Ana García'))
-    await waitFor(() => expect(screen.getAllByText('Ana García').length).toBeGreaterThan(1))
+    // Abrir drawer del usuario logueado (Carlos)
+    const rows = screen.getAllByText('Carlos Foo')
+    await user.click(rows[0])
+    await waitFor(() => expect(screen.getAllByText('Carlos Foo').length).toBeGreaterThan(1))
 
     // Click en botón Compartir dentro del drawer
     const shareBtns = screen.getAllByRole('button', { name: /Compartir/i })
@@ -134,9 +134,10 @@ describe('Ranking — compartir desde drawer', () => {
     await setupApi()
     renderRanking()
 
-    await waitFor(() => expect(screen.getByText('Ana García')).toBeInTheDocument(), { timeout: 3000 })
-    await user.click(screen.getByText('Ana García'))
-    await waitFor(() => expect(screen.getAllByText('Ana García').length).toBeGreaterThan(1))
+    await waitFor(() => expect(screen.getAllByText('Carlos Foo').length).toBeGreaterThan(0), { timeout: 3000 })
+    const rows = screen.getAllByText('Carlos Foo')
+    await user.click(rows[0])
+    await waitFor(() => expect(screen.getAllByText('Carlos Foo').length).toBeGreaterThan(1))
 
     const shareBtn = screen.getAllByRole('button', { name: /Compartir/i })
     await user.click(shareBtn[shareBtn.length - 1])

@@ -1,17 +1,71 @@
-import { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { api } from '@/api/client'
 import { Modal } from '@/components/ui/Modal'
 import { Spinner } from '@/components/ui/Spinner'
+import { Button } from '@/components/ui/Button'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useToastStore } from '@/store/toastStore'
 import { useAuthStore } from '@/store/authStore'
 import type { Match, Tournament } from '@/types'
+import { CampaignBuilder } from '@/components/CampaignBuilder'
+import { CampaignLiveActivity } from '@/components/CampaignLiveActivity'
+import { EngageVerifyPanel } from '@/components/EngageVerifyPanel'
 
-type Tab = 'partidos' | 'planillas' | 'usuarios' | 'torneos' | 'broadcast' | 'jobs'
+type Tab = 'partidos' | 'planillas' | 'usuarios' | 'torneos' | 'broadcast' | 'jobs' | 'polls' | 'campanas'
 
 const SUPER_ADMIN_EMAIL = 'cfdelrio@gmail.com'
+
+// Argentina is permanently UTC-3 (no DST since 2000)
+const toArgentinaInput = (utcStr: string) => {
+  const d = new Date(utcStr)
+  const argMs = d.getTime() - 3 * 60 * 60 * 1000
+  return new Date(argMs).toISOString().slice(0, 16)
+}
+const fromArgentinaInput = (local: string) => local ? local + ':00-03:00' : local
+
+interface ConfirmModalProps {
+  open: boolean
+  title: string
+  message: string
+  requireText?: string
+  onConfirm: () => void
+  onCancel: () => void
+}
+
+function ConfirmModal({ open, title, message, requireText, onConfirm, onCancel }: ConfirmModalProps) {
+  const [input, setInput] = useState('')
+  const canConfirm = !requireText || input === requireText
+  useEffect(() => { if (!open) setInput('') }, [open])
+  return (
+    <Modal open={open} onClose={onCancel} title={title}>
+      <p className="text-sm text-gray-700 mb-4">{message}</p>
+      {requireText && (
+        <div className="mb-4">
+          <label htmlFor="confirm-text-input" className="block text-xs text-gray-500 mb-1">{`Escribí "${requireText}" para confirmar`}</label>
+          <input
+            id="confirm-text-input"
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            className="w-full border border-red-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+            autoFocus
+          />
+        </div>
+      )}
+      <div className="flex gap-2 justify-end mt-2">
+        <button onClick={onCancel} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 rounded-lg">Cancelar</button>
+        <button
+          onClick={onConfirm}
+          disabled={!canConfirm}
+          className="px-4 py-2 text-sm font-bold bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-40"
+        >Confirmar</button>
+      </div>
+    </Modal>
+  )
+}
 
 export function Admin() {
   const { show } = useToastStore()
@@ -22,6 +76,7 @@ export function Admin() {
   const [loading, setLoading] = useState(true)
   const [showMatchModal, setShowMatchModal] = useState(false)
   const [showResultModal, setShowResultModal] = useState(false)
+  const [confirmDeleteMatchId, setConfirmDeleteMatchId] = useState<string | null>(null)
   const [editMatch, setEditMatch] = useState<Match | null>(null)
   const [resultMatch, setResultMatch] = useState<Match | null>(null)
   const [matchForm, setMatchForm] = useState({
@@ -54,11 +109,12 @@ export function Admin() {
   const handleSaveMatch = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      const payload = { ...matchForm, start_time: fromArgentinaInput(matchForm.start_time) }
       if (editMatch) {
-        await api.put(`/matches/${editMatch.id}`, matchForm)
+        await api.put(`/matches/${editMatch.id}`, payload)
         show('Partido actualizado ✓', 'success')
       } else {
-        await api.post('/matches', matchForm)
+        await api.post('/matches', payload)
         show('Partido creado ✓', 'success')
       }
       setShowMatchModal(false)
@@ -70,8 +126,11 @@ export function Admin() {
     }
   }
 
-  const handleDeleteMatch = async (id: string) => {
-    if (!confirm('¿Eliminar partido?')) return
+  const handleDeleteMatch = (id: string) => setConfirmDeleteMatchId(id)
+
+  const doDeleteMatch = async () => {
+    const id = confirmDeleteMatchId!
+    setConfirmDeleteMatchId(null)
     try {
       await api.delete(`/matches/${id}`)
       setMatches(matches.filter(m => m.id !== id))
@@ -103,7 +162,7 @@ export function Admin() {
     setMatchForm({
       home_team: m.home_team,
       away_team: m.away_team,
-      start_time: m.start_time.slice(0, 16),
+      start_time: toArgentinaInput(m.start_time),
       tournament_id: m.tournament_id || '',
       halftime_minutes: String(m.halftime_minutes),
       sede: m.sede || '',
@@ -136,18 +195,20 @@ export function Admin() {
     { id: 'usuarios', label: '👥 Usuarios' },
     { id: 'torneos', label: '🏆 Torneos' },
     { id: 'broadcast',   label: '📣 WhatsApp' },
+    { id: 'polls',       label: '🗳️ Polls' },
     ...(isSuperAdmin ? [{ id: 'jobs' as Tab, label: '⚙️ Procesos' }] : []),
+    ...(isSuperAdmin ? [{ id: 'campanas' as Tab, label: '📡 Monitor' }] : []),
   ]
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-4">
-      <h1 className="text-xl font-bold text-[#006d2e]">⚙️ Administración</h1>
+      <h1 className="text-xl font-bold text-[#001A4B]">⚙️ Administración</h1>
 
       {/* Tabs */}
       <div className="flex gap-1 flex-wrap">
         {tabs.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === t.id ? 'bg-[#006d2e] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === t.id ? 'bg-[#001A4B] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
             {t.label}
           </button>
         ))}
@@ -178,6 +239,12 @@ export function Admin() {
       {/* Tab: Procesos manuales */}
       {tab === 'jobs' && <JobsTab />}
 
+      {/* Tab: Polls */}
+      {tab === 'polls' && <PollsTab />}
+
+      {/* Tab: Campañas (super-admin only) */}
+      {tab === 'campanas' && isSuperAdmin && <CampanasTab />}
+
       {/* Modal partido */}
       <Modal open={showMatchModal} onClose={() => setShowMatchModal(false)} title={editMatch ? 'Editar Partido' : 'Nuevo Partido'}>
         <form onSubmit={handleSaveMatch} className="space-y-3">
@@ -185,24 +252,24 @@ export function Admin() {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Equipo Local</label>
               <input value={matchForm.home_team} onChange={(e) => setMatchForm({ ...matchForm, home_team: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]" required />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]" required />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Equipo Visitante</label>
               <input value={matchForm.away_team} onChange={(e) => setMatchForm({ ...matchForm, away_team: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]" required />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]" required />
             </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">📅 Fecha y hora del partido <span className="text-gray-400 font-normal">(hora local Argentina)</span></label>
             <input type="datetime-local" value={matchForm.start_time} onChange={(e) => setMatchForm({ ...matchForm, start_time: e.target.value })}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]" required />
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]" required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Torneo</label>
               <select value={matchForm.tournament_id} onChange={(e) => setMatchForm({ ...matchForm, tournament_id: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]">
                 <option value="">Sin torneo</option>
                 {tournaments.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
@@ -210,19 +277,19 @@ export function Admin() {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Min. cierre pronóstico</label>
               <input type="number" value={matchForm.halftime_minutes} onChange={(e) => setMatchForm({ ...matchForm, halftime_minutes: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]" />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]" />
             </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">📍 Sede</label>
             <input value={matchForm.sede} onChange={(e) => setMatchForm({ ...matchForm, sede: e.target.value })}
-              placeholder="Ciudad de México" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]" />
+              placeholder="Ciudad de México" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Grupo</label>
               <select value={matchForm.grupo} onChange={(e) => setMatchForm({ ...matchForm, grupo: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]">
                 <option value="">—</option>
                 {['A','B','C','D','E','F','G','H','I','J','K','L'].map(g => <option key={g} value={g}>{g}</option>)}
               </select>
@@ -230,7 +297,7 @@ export function Admin() {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Jornada</label>
               <select value={matchForm.jornada} onChange={(e) => setMatchForm({ ...matchForm, jornada: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]">
                 <option value="">—</option>
                 <option value="1">1</option>
                 <option value="2">2</option>
@@ -238,9 +305,9 @@ export function Admin() {
               </select>
             </div>
           </div>
-          <button type="submit" className="w-full bg-[#00923f] text-white font-bold py-2.5 rounded-xl hover:bg-[#005c28]">
+          <Button type="submit" fullWidth>
             {editMatch ? 'Actualizar' : 'Crear partido'}
-          </button>
+          </Button>
         </form>
       </Modal>
 
@@ -253,13 +320,13 @@ export function Admin() {
               <label className="block text-xs font-medium text-gray-600 mb-1">{resultMatch?.home_team}</label>
               <input type="number" min={0} value={resultForm.resultado_local}
                 onChange={(e) => setResultForm({ ...resultForm, resultado_local: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-3 text-2xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-[#00923f]" required />
+                className="w-full border border-gray-200 rounded-lg px-3 py-3 text-2xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-[#0042A5]" required />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">{resultMatch?.away_team}</label>
               <input type="number" min={0} value={resultForm.resultado_visitante}
                 onChange={(e) => setResultForm({ ...resultForm, resultado_visitante: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-3 text-2xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-[#00923f]" required />
+                className="w-full border border-gray-200 rounded-lg px-3 py-3 text-2xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-[#0042A5]" required />
             </div>
           </div>
           <button type="submit" className="w-full bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700">
@@ -267,6 +334,14 @@ export function Admin() {
           </button>
         </form>
       </Modal>
+
+      <ConfirmModal
+        open={!!confirmDeleteMatchId}
+        title="Eliminar partido"
+        message="¿Eliminar este partido? Esta acción no se puede deshacer."
+        onConfirm={doDeleteMatch}
+        onCancel={() => setConfirmDeleteMatchId(null)}
+      />
     </div>
   )
 }
@@ -303,11 +378,11 @@ function PartidosTab({ matches, tournaments, loading, onNewMatch, onEdit, onResu
                 <button
                   key={t.id}
                   onClick={() => setSelectedTournamentId(t.id)}
-                  className="bg-white border border-gray-200 rounded-xl p-4 text-left hover:border-[#00923f] hover:shadow-sm transition-all group"
+                  className="bg-white border border-gray-200 rounded-xl p-4 text-left hover:border-[#0042A5] hover:shadow-sm transition-all group"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-semibold text-[#006d2e] group-hover:text-[#00923f]">{t.name}</p>
+                      <p className="font-semibold text-[#001A4B] group-hover:text-[#0042A5]">{t.name}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{t.fase}</p>
                     </div>
                     <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full font-medium">
@@ -318,7 +393,13 @@ function PartidosTab({ matches, tournaments, loading, onNewMatch, onEdit, onResu
               )
             })}
             {tournaments.length === 0 && (
-              <p className="text-sm text-gray-400 col-span-2 text-center py-8">No hay torneos. Creá uno en la pestaña Torneos.</p>
+              <div className="col-span-2">
+                <EmptyState
+                  icon="🏆"
+                  message="No hay torneos"
+                  description="Creá uno en la pestaña Torneos."
+                />
+              </div>
             )}
           </div>
         )}
@@ -333,12 +414,12 @@ function PartidosTab({ matches, tournaments, loading, onNewMatch, onEdit, onResu
       <div className="flex items-center gap-3">
         <button
           onClick={() => setSelectedTournamentId(null)}
-          className="text-sm text-[#00923f] hover:underline flex items-center gap-1"
+          className="text-sm text-[#0042A5] hover:underline flex items-center gap-1"
         >
           ← Torneos
         </button>
         <span className="text-gray-300">|</span>
-        <p className="text-sm font-semibold text-[#006d2e]">{selectedTournament?.name}</p>
+        <p className="text-sm font-semibold text-[#001A4B]">{selectedTournament?.name}</p>
         <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{selectedTournament?.fase}</span>
       </div>
 
@@ -347,7 +428,7 @@ function PartidosTab({ matches, tournaments, loading, onNewMatch, onEdit, onResu
         <p className="text-sm text-gray-500">{filtered.length} partidos</p>
         <button
           onClick={() => onNewMatch(selectedTournamentId)}
-          className="bg-[#ffffff] text-[#006d2e] text-sm font-bold px-4 py-2 rounded-xl hover:bg-yellow-400 transition-colors"
+          className="bg-[#FFDF00] text-[#001A4B] text-sm font-bold px-4 py-2 rounded-xl hover:bg-yellow-400 transition-colors"
         >
           + Nuevo partido
         </button>
@@ -368,13 +449,17 @@ function PartidosTab({ matches, tournaments, loading, onNewMatch, onEdit, onResu
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400 text-sm">No hay partidos en este torneo</td></tr>
+                <tr>
+                  <td colSpan={5}>
+                    <EmptyState icon="⚽" message="No hay partidos en este torneo" />
+                  </td>
+                </tr>
               ) : filtered.map((m) => (
                 <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                   <td className="px-4 py-3">
-                    <span className="font-medium text-[#006d2e]">{m.home_team}</span>
+                    <span className="font-medium text-[#001A4B]">{m.home_team}</span>
                     <span className="text-gray-400 mx-1">vs</span>
-                    <span className="font-medium text-[#006d2e]">{m.away_team}</span>
+                    <span className="font-medium text-[#001A4B]">{m.away_team}</span>
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
                     {format(new Date(m.start_time), "d MMM HH:mm", { locale: es })}
@@ -484,7 +569,7 @@ function TournamentProgressBars({ t }: { t: TournamentWithCount }) {
         </div>
         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${finished === total && total > 0 ? 'bg-green-500' : 'bg-[#00923f]'}`}
+            className={`h-full rounded-full transition-all ${finished === total && total > 0 ? 'bg-green-500' : 'bg-[#0042A5]'}`}
             style={{ width: `${matchPct}%` }}
           />
         </div>
@@ -613,29 +698,29 @@ function TorneosTab({ onRefresh }: { tournaments: Tournament[], onRefresh: () =>
     <div className="space-y-4">
       {/* Formulario nuevo torneo */}
       <form onSubmit={handleCreate} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm space-y-3">
-        <h3 className="font-semibold text-[#006d2e] text-sm">Nuevo Torneo</h3>
+        <h3 className="font-semibold text-[#001A4B] text-sm">Nuevo Torneo</h3>
         <div className="grid grid-cols-2 gap-3">
           <input value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
             placeholder="Nombre del torneo" required
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]" />
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]" />
           <input value={createForm.fase} onChange={(e) => setCreateForm({ ...createForm, fase: e.target.value })}
             placeholder="Fase (Grupos, Octavos...)" required
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]" />
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]" />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-gray-500 mb-1">Fecha inicio</label>
             <input type="date" value={createForm.start_date} onChange={(e) => setCreateForm({ ...createForm, start_date: e.target.value })}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]" />
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]" />
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-1">Fecha fin</label>
             <input type="date" value={createForm.end_date} onChange={(e) => setCreateForm({ ...createForm, end_date: e.target.value })}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]" />
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]" />
           </div>
         </div>
         <button type="submit" disabled={saving}
-          className="bg-[#ffffff] text-[#006d2e] text-sm font-bold px-4 py-2 rounded-lg hover:bg-yellow-400 disabled:opacity-50">
+          className="bg-[#FFDF00] text-[#001A4B] text-sm font-bold px-4 py-2 rounded-lg hover:bg-yellow-400 disabled:opacity-50">
           Crear torneo
         </button>
       </form>
@@ -645,14 +730,14 @@ function TorneosTab({ onRefresh }: { tournaments: Tournament[], onRefresh: () =>
         {loadingAll ? (
           <div className="py-6 flex justify-center"><Spinner size="sm" /></div>
         ) : allTournaments.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-6">No hay torneos</p>
+          <EmptyState icon="🏆" message="No hay torneos" />
         ) : allTournaments.map((t) => (
           <div key={t.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             {/* Cabecera del torneo */}
             <div className="flex items-center justify-between px-4 py-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-semibold text-[#006d2e]">{t.name}</p>
+                  <p className="text-sm font-semibold text-[#001A4B]">{t.name}</p>
                   <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{t.fase}</span>
                   {t.match_count != null && t.match_count > 0 && (
                     <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full font-medium">
@@ -673,7 +758,7 @@ function TorneosTab({ onRefresh }: { tournaments: Tournament[], onRefresh: () =>
                   {t.is_active ? '● Activo' : '○ Inactivo'}
                 </span>
                 <button onClick={() => openEdit(t)}
-                  className={`text-xs px-3 py-1.5 rounded-lg font-medium border transition-all ${editingId === t.id ? 'bg-[#006d2e] text-white border-[#006d2e]' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}>
+                  className={`text-xs px-3 py-1.5 rounded-lg font-medium border transition-all ${editingId === t.id ? 'bg-[#001A4B] text-white border-[#001A4B]' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}>
                   {editingId === t.id ? 'Cancelar' : 'Editar'}
                 </button>
               </div>
@@ -689,44 +774,44 @@ function TorneosTab({ onRefresh }: { tournaments: Tournament[], onRefresh: () =>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
                     <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#00923f]" />
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#0042A5]" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">Fase</label>
                     <input value={editForm.fase} onChange={(e) => setEditForm({ ...editForm, fase: e.target.value })}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#00923f]" />
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#0042A5]" />
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
                   <input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                     placeholder="Descripción opcional..."
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#00923f]" />
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#0042A5]" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">Fecha inicio</label>
                     <input type="date" value={editForm.start_date} onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#00923f]" />
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#0042A5]" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">Fecha fin</label>
                     <input type="date" value={editForm.end_date} onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#00923f]" />
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#0042A5]" />
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={editForm.is_active}
                       onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
-                      className="w-4 h-4 rounded accent-[#00923f]" />
+                      className="w-4 h-4 rounded accent-[#0042A5]" />
                     <span className="text-xs font-medium text-gray-700">Visible en la app</span>
                   </label>
                 </div>
 
                 {/* Cierre de pronósticos */}
                 <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
-                  <p className="text-xs font-semibold text-[#006d2e] mb-2">⏱ Cierre de pronósticos</p>
+                  <p className="text-xs font-semibold text-[#001A4B] mb-2">⏱ Cierre de pronósticos</p>
                   <p className="text-xs text-gray-500 mb-2">
                     Establecé cuántos minutos antes del inicio se cierran los pronósticos para todos los partidos de este torneo.
                   </p>
@@ -736,14 +821,14 @@ function TorneosTab({ onRefresh }: { tournaments: Tournament[], onRefresh: () =>
                       value={cutoffMinutes[t.id] || ''}
                       onChange={(e) => setCutoffMinutes({ ...cutoffMinutes, [t.id]: e.target.value })}
                       placeholder="ej: 45"
-                      className="w-24 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#00923f]"
+                      className="w-24 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#0042A5]"
                     />
                     <span className="text-xs text-gray-500">minutos antes del partido</span>
                     <button
                       type="button"
                       onClick={() => handleApplyCutoff(t.id)}
                       disabled={applyingCutoff === t.id || !cutoffMinutes[t.id]}
-                      className="text-xs bg-[#00923f] text-white font-bold px-3 py-1.5 rounded-lg hover:bg-[#005c28] disabled:opacity-40 ml-auto"
+                      className="text-xs bg-[#0042A5] text-white font-bold px-3 py-1.5 rounded-lg hover:bg-[#003080] disabled:opacity-40 ml-auto"
                     >
                       {applyingCutoff === t.id ? 'Aplicando...' : 'Aplicar a todos'}
                     </button>
@@ -751,10 +836,9 @@ function TorneosTab({ onRefresh }: { tournaments: Tournament[], onRefresh: () =>
                 </div>
 
                 <div className="flex gap-2 pt-1">
-                  <button type="button" onClick={() => handleSaveEdit(t.id)} disabled={saving}
-                    className="bg-[#00923f] text-white text-sm font-bold px-5 py-2 rounded-xl hover:bg-[#005c28] disabled:opacity-50">
+                  <Button onClick={() => handleSaveEdit(t.id)} disabled={saving}>
                     Guardar cambios
-                  </button>
+                  </Button>
                   <button type="button" onClick={() => setEditingId(null)}
                     className="text-sm text-gray-500 hover:text-gray-700 px-3 py-2">
                     Cancelar
@@ -782,15 +866,24 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
   const [loadingPlanillas, setLoadingPlanillas] = useState(false)
   const [planillaTournamentFilter, setPlanillaTournamentFilter] = useState<string>('all')
   const [allPlanillas, setAllPlanillas] = useState<Record<string, unknown>[] | null>(null)
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<{ id: string; name: string } | null>(null)
+  const [confirmDeletePlanilla, setConfirmDeletePlanilla] = useState<{ id: string; nombre: string; userName: string } | null>(null)
+  const USERS_PER_PAGE = 20
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalUsers, setTotalUsers] = useState(0)
 
   const loadTabData = useCallback(async () => {
     if (tab === 'usuarios') {
       const [uRes, urRes] = await Promise.allSettled([
-        api.get('/users'),
+        api.get(`/users?page=${page}&limit=${USERS_PER_PAGE}`),
         api.get('/bets/unlock-requests'),
       ])
-      if (uRes.status === 'fulfilled') setData(uRes.value.data.data.users || [])
-      else show('Error al cargar usuarios', 'error')
+      if (uRes.status === 'fulfilled') {
+        setData(uRes.value.data.data.users || [])
+        const pag = uRes.value.data.data.pagination
+        if (pag) { setTotalPages(pag.pages); setTotalUsers(pag.total) }
+      } else show('Error al cargar usuarios', 'error')
       if (urRes.status === 'fulfilled') {
         const counts: Record<string, number> = {}
         for (const r of (urRes.value.data.data || [])) {
@@ -803,7 +896,7 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
       const { data: d } = await api.get('/planillas/admin/all').catch(() => { show('Error al cargar', 'error'); return { data: { data: [] } } })
       setData(d.data)
     }
-  }, [tab, show])
+  }, [tab, show, page])
 
   useEffect(() => {
     setLoading(true)
@@ -811,6 +904,9 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
     const interval = setInterval(loadTabData, 30000)
     return () => clearInterval(interval)
   }, [loadTabData])
+
+  useEffect(() => { setExpandedUserId(null) }, [page])
+  useEffect(() => { setPage(1) }, [tab])
 
   const handleUserClick = useCallback(async (uid: string) => {
     if (expandedUserId === uid) { setExpandedUserId(null); return }
@@ -832,6 +928,42 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
     }
   }, [expandedUserId, allPlanillas, show])
 
+  const handleDeleteUser = (userId: string, userName: string) => {
+    setConfirmDeleteUser({ id: userId, name: userName })
+  }
+
+  const doDeleteUser = async () => {
+    if (!confirmDeleteUser) return
+    const { id: userId, name: userName } = confirmDeleteUser
+    setConfirmDeleteUser(null)
+    try {
+      await api.delete(`/users/${userId}`)
+      setData(prev => {
+        const next = prev.filter(u => String(u.id) !== userId)
+        if (next.length === 0 && page > 1) setPage(p => p - 1)
+        return next
+      })
+      show(`Usuario ${userName} eliminado completamente ✓`, 'success')
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } }).response?.data?.error || 'Error al eliminar usuario'
+      show(msg, 'error')
+    }
+  }
+
+  const handleDeletePlanilla = async () => {
+    if (!confirmDeletePlanilla) return
+    const { id, nombre, userName } = confirmDeletePlanilla
+    setConfirmDeletePlanilla(null)
+    try {
+      await api.delete(`/planillas/admin/${id}`)
+      setData(prev => prev.filter(p => String(p.id) !== id))
+      show(`Planilla "${nombre}" de ${userName} eliminada ✓`, 'success')
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } }).response?.data?.error || 'Error al eliminar planilla'
+      show(msg, 'error')
+    }
+  }
+
   const handlePaid = async (id: string, current: boolean) => {
     try {
       await api.put(`/planillas/admin/${id}`, { precio_pagado: !current })
@@ -846,6 +978,7 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
 
   if (tab === 'planillas') {
     return (
+      <>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -854,18 +987,28 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
               <th className="text-left px-4 py-2 font-semibold">Planilla</th>
               <th className="text-center px-4 py-2 font-semibold">Pts</th>
               <th className="text-center px-4 py-2 font-semibold">Pagada</th>
+              <th className="text-center px-4 py-2 font-semibold">Eliminar</th>
             </tr>
           </thead>
           <tbody>
             {data.map((p) => (
               <tr key={String(p.id)} className="border-b border-gray-50 hover:bg-gray-50/50">
                 <td className="px-4 py-2 text-gray-600 text-xs">{String(p.user_name || '')}</td>
-                <td className="px-4 py-2 font-medium text-[#006d2e]">{String(p.nombre_planilla || '')}</td>
+                <td className="px-4 py-2 font-medium text-[#001A4B]">{String(p.nombre_planilla || '')}</td>
                 <td className="px-4 py-2 text-center text-gray-600">{String(p.puntos_totales || 0)}</td>
                 <td className="px-4 py-2 text-center">
                   <button onClick={() => handlePaid(String(p.id), Boolean(p.precio_pagado))}
                     className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.precio_pagado ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-600'}`}>
-                    {p.precio_pagado ? 'Pagada' : 'Sin pagar'}
+                    {p.precio_pagado ? 'Pagada' : 'IMPAGO'}
+                  </button>
+                </td>
+                <td className="px-4 py-2 text-center">
+                  <button
+                    onClick={() => setConfirmDeletePlanilla({ id: String(p.id), nombre: String(p.nombre_planilla || ''), userName: String(p.user_name || '') })}
+                    className="text-red-400 hover:text-red-600 transition-colors text-base"
+                    title="Eliminar planilla"
+                  >
+                    🗑️
                   </button>
                 </td>
               </tr>
@@ -873,6 +1016,14 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
           </tbody>
         </table>
       </div>
+      <ConfirmModal
+        open={!!confirmDeletePlanilla}
+        title="Eliminar planilla"
+        message={`¿Eliminar la planilla "${confirmDeletePlanilla?.nombre}" de ${confirmDeletePlanilla?.userName}? Se borrarán todos sus pronósticos y puntajes. El usuario recibirá un email de notificación.`}
+        onConfirm={handleDeletePlanilla}
+        onCancel={() => setConfirmDeletePlanilla(null)}
+      />
+    </>
     )
   }
 
@@ -894,6 +1045,7 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
             <th className="text-center px-4 py-2 font-semibold">Rol</th>
             <th className="text-center px-4 py-2 font-semibold">Verificado</th>
             <th className="text-center px-4 py-2 font-semibold">Solicitudes</th>
+            <th className="text-right px-4 py-2 font-semibold">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -902,12 +1054,12 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
             const reqCount = unlockCounts[uid] || 0
             const isExpanded = expandedUserId === uid
             return (
-              <>
-              <tr key={uid}
+              <React.Fragment key={uid}>
+              <tr
                 className={`border-b border-gray-50 cursor-pointer transition-colors ${isExpanded ? 'bg-blue-50' : 'hover:bg-gray-50/50'}`}
                 onClick={() => handleUserClick(uid)}
               >
-                <td className="px-4 py-2 font-medium text-[#006d2e] flex items-center gap-2">
+                <td className="px-4 py-2 font-medium text-[#001A4B] flex items-center gap-2">
                   <span className="text-gray-400 text-xs">{isExpanded ? '▾' : '▸'}</span>
                   {String(u.nombre || '')}
                 </td>
@@ -926,6 +1078,18 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
                     : <span className="text-gray-300 text-xs">—</span>
                   }
                 </td>
+                <td className="px-4 py-2 text-right">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteUser(uid, String(u.nombre || ''))
+                    }}
+                    className="text-xs text-red-500 hover:text-red-700 font-semibold px-2 py-1 transition-colors"
+                    title={`Eliminar a ${u.nombre} y todos sus datos`}
+                  >
+                    🗑️ Eliminar
+                  </button>
+                </td>
               </tr>
               {/* Panel expandible de planillas */}
               {isExpanded && (
@@ -941,7 +1105,7 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
                         <div className="flex gap-1.5 flex-wrap">
                           <button
                             onClick={(e) => { e.stopPropagation(); setPlanillaTournamentFilter('all') }}
-                            className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all ${planillaTournamentFilter === 'all' ? 'bg-[#006d2e] text-white border-[#006d2e]' : 'bg-white text-gray-600 border-gray-200'}`}
+                            className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all ${planillaTournamentFilter === 'all' ? 'bg-[#001A4B] text-white border-[#001A4B]' : 'bg-white text-gray-600 border-gray-200'}`}
                           >
                             Todos ({userPlanillas.length})
                           </button>
@@ -949,7 +1113,7 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
                             <button
                               key={t}
                               onClick={(e) => { e.stopPropagation(); setPlanillaTournamentFilter(t) }}
-                              className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all ${planillaTournamentFilter === t ? 'bg-[#006d2e] text-white border-[#006d2e]' : 'bg-white text-gray-600 border-gray-200'}`}
+                              className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all ${planillaTournamentFilter === t ? 'bg-[#001A4B] text-white border-[#001A4B]' : 'bg-white text-gray-600 border-gray-200'}`}
                             >
                               {t} ({userPlanillas.filter(p => String(p.tournament_name || '') === t).length})
                             </button>
@@ -961,11 +1125,11 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
                             <button
                               key={String(p.id)}
                               onClick={(e) => { e.stopPropagation(); navigate(`/planilla/${p.id}`) }}
-                              className="bg-white border border-gray-200 rounded-lg px-4 py-3 text-left hover:border-[#00923f] hover:shadow-sm transition-all group"
+                              className="bg-white border border-gray-200 rounded-lg px-4 py-3 text-left hover:border-[#0042A5] hover:shadow-sm transition-all group"
                             >
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <p className="text-sm font-semibold text-[#006d2e] group-hover:text-[#00923f]">
+                                  <p className="text-sm font-semibold text-[#001A4B] group-hover:text-[#0042A5]">
                                     {String(p.nombre_planilla || 'Planilla')}
                                   </p>
                                   {p.tournament_name ? (
@@ -973,10 +1137,10 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
                                   ) : null}
                                 </div>
                                 <div className="text-right shrink-0">
-                                  <p className="text-sm font-black text-[#00923f]">{String(p.puntos_totales || 0)} pts</p>
-                                  <p className={`text-xs font-medium mt-0.5 ${p.precio_pagado ? 'text-green-600' : 'text-orange-500'}`}>
-                                    {p.precio_pagado ? 'Pagada' : 'Sin pagar'}
-                                  </p>
+                                  <p className="text-sm font-black text-[#0042A5]">{String(p.puntos_totales || 0)} pts</p>
+                                  {!p.precio_pagado && (
+                                    <span className="bg-orange-100 text-orange-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-0.5 inline-block">IMPAGO</span>
+                                  )}
                                 </div>
                               </div>
                             </button>
@@ -987,11 +1151,40 @@ function AdminSubTab({ tab }: { tab: 'planillas' | 'usuarios' }) {
                   </td>
                 </tr>
               )}
-              </>
+              </React.Fragment>
             )
           })}
         </tbody>
       </table>
+      {tab === 'usuarios' && totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-sm text-gray-500">
+          <span>{totalUsers} usuarios · página {page} de {totalPages}</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(p => p - 1)}
+              disabled={page === 1}
+              className="px-3 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors text-xs"
+            >
+              ← Anterior
+            </button>
+            <button
+              onClick={() => setPage(p => p + 1)}
+              disabled={page === totalPages}
+              className="px-3 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors text-xs"
+            >
+              Siguiente →
+            </button>
+          </div>
+        </div>
+      )}
+      <ConfirmModal
+        open={!!confirmDeleteUser}
+        title="⚠️ Eliminar usuario"
+        message={`¿Eliminar a "${confirmDeleteUser?.name}" y TODOS sus datos (planillas, apuestas, scores)? Es irreversible.`}
+        requireText="CONFIRMAR"
+        onConfirm={doDeleteUser}
+        onCancel={() => setConfirmDeleteUser(null)}
+      />
     </div>
   )
 }
@@ -1001,7 +1194,7 @@ function JobCard({ title, description, children }: { title: string; description:
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-3">
       <div>
-        <h3 className="text-sm font-semibold text-[#006d2e]">{title}</h3>
+        <h3 className="text-sm font-semibold text-[#001A4B]">{title}</h3>
         <p className="text-xs text-gray-400 mt-0.5">{description}</p>
       </div>
       {children}
@@ -1017,11 +1210,20 @@ function JobsTab() {
   const [winnerEmail, setWinnerEmail] = useState('')
   const [winnerMatchdayName, setWinnerMatchdayName] = useState('')
   const [winnerPoints, setWinnerPoints] = useState('42')
+  const [winnerUserName, setWinnerUserName] = useState('')
+  const [winnerImageUrl, setWinnerImageUrl] = useState('')
   const [weeklyTestEmail, setWeeklyTestEmail] = useState('')
   const [welcomeEmail, setWelcomeEmail] = useState('')
+  const [voice5dayUserIds, setVoice5dayUserIds] = useState('')
+  const [voice5dayDryRun, setVoice5dayDryRun] = useState(true)
+  const [voice5dayPreview, setVoice5dayPreview] = useState<Array<{ tournament: string; user: string; phone: string; pending: number }>>([])
   const [waTo, setWaTo] = useState('')
   const [waMessage, setWaMessage] = useState('')
   const [jobResult, setJobResult] = useState<{ id: string; text: string } | null>(null)
+  const [confirmWeekly, setConfirmWeekly] = useState(false)
+  const [confirmVoice5day, setConfirmVoice5day] = useState(false)
+  const [confirmReset, setConfirmReset] = useState(false)
+  const [resetExtendHours, setResetExtendHours] = useState('')
 
   useEffect(() => {
     // GET /matchdays requires tournament_id → load all tournaments first, then matchdays per tournament
@@ -1037,7 +1239,7 @@ function JobsTab() {
         })
       )
       setMatchdays(all)
-    }).catch(() => {})
+    }).catch(() => show('Error al cargar fechas', 'error'))
   }, [])
 
   const runJob = async (jobId: string, fn: () => Promise<string>) => {
@@ -1058,16 +1260,16 @@ function JobsTab() {
     <div className="space-y-4 max-w-2xl">
       {/* Recalcular Ranking */}
       <JobCard title="🔄 Recalcular Ranking" description="Suma todos los puntos de la tabla scores y recalcula posiciones.">
-        <button
+        <Button
           onClick={() => runJob('ranking', async () => {
             await api.post('/admin/jobs/recalculate-ranking', {})
             return 'Ranking recalculado ✓'
           })}
           disabled={!!loading}
-          className="bg-[#00923f] text-white text-sm font-bold px-5 py-2 rounded-xl hover:bg-[#005c28] disabled:opacity-50"
+          loading={loading === 'ranking'}
         >
           {loading === 'ranking' ? 'Recalculando...' : 'Ejecutar'}
-        </button>
+        </Button>
         {jobResult?.id === 'ranking' && <p className="text-xs text-green-600 font-medium">{jobResult.text}</p>}
       </JobCard>
 
@@ -1079,7 +1281,7 @@ function JobsTab() {
             <select
               value={recalcMatchdayId}
               onChange={e => setRecalcMatchdayId(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]"
             >
               <option value="">— Seleccioná —</option>
               {matchdays.map(m => (
@@ -1089,23 +1291,24 @@ function JobsTab() {
               ))}
             </select>
           </div>
-          <button
+          <Button
             onClick={() => runJob('matchday', async () => {
               if (!recalcMatchdayId) { show('Seleccioná una jornada', 'error'); return '' }
               const { data } = await api.post('/admin/jobs/recalc-matchday', { matchday_id: recalcMatchdayId })
               return `Jornada recalculada ✓ (${data.data?.updated ?? 0} apuestas)`
             })}
             disabled={!!loading || !recalcMatchdayId}
-            className="bg-[#00923f] text-white text-sm font-bold px-5 py-2 rounded-xl hover:bg-[#005c28] disabled:opacity-50 whitespace-nowrap"
+            loading={loading === 'matchday'}
+            className="whitespace-nowrap"
           >
             {loading === 'matchday' ? 'Calculando...' : 'Ejecutar'}
-          </button>
+          </Button>
         </div>
         {jobResult?.id === 'matchday' && <p className="text-xs text-green-600 font-medium">{jobResult.text}</p>}
       </JobCard>
 
-      {/* Simular Ganador */}
-      <JobCard title="🏆 Simular Ganador de Jornada" description="Dispara el flujo completo: imagen FIFA, email, WhatsApp y push a todos.">
+      {/* Publicar Ganador */}
+      <JobCard title="🏆 Publicar Ganador de Jornada" description="Dispara notificaciones (email, WhatsApp, push) y publica la imagen hero en el modal de Ganadores.">
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Email del ganador *</label>
@@ -1114,7 +1317,7 @@ function JobsTab() {
               value={winnerEmail}
               onChange={e => setWinnerEmail(e.target.value)}
               placeholder="cfdelrio@gmail.com"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -1124,7 +1327,7 @@ function JobsTab() {
                 value={winnerMatchdayName}
                 onChange={e => setWinnerMatchdayName(e.target.value)}
                 placeholder="Fecha 1"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]"
               />
             </div>
             <div>
@@ -1133,24 +1336,61 @@ function JobsTab() {
                 type="number"
                 value={winnerPoints}
                 onChange={e => setWinnerPoints(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]"
               />
             </div>
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Nombre del ganador (opcional)</label>
+            <input
+              value={winnerUserName}
+              onChange={e => setWinnerUserName(e.target.value)}
+              placeholder="Juan Pérez"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">URL imagen hero (opcional — si la cargás se muestra en el modal de Ganadores)</label>
+            <input
+              value={winnerImageUrl}
+              onChange={e => setWinnerImageUrl(e.target.value)}
+              placeholder="https://..."
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]"
+            />
+          </div>
+          {winnerImageUrl && (
+            <img
+              src={winnerImageUrl}
+              alt="Preview"
+              className="w-full rounded-xl max-h-48 object-cover border border-gray-100"
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
+          )}
           <button
             onClick={() => runJob('winner', async () => {
               if (!winnerEmail) { show('Ingresá el email del ganador', 'error'); return '' }
+              const pts = winnerPoints ? parseInt(winnerPoints) : undefined
               await api.post('/admin/jobs/trigger-winner', {
                 email: winnerEmail,
                 matchday_name: winnerMatchdayName || undefined,
-                points: winnerPoints ? parseInt(winnerPoints) : undefined,
+                points: pts,
               })
-              return `Flujo de ganador disparado para ${winnerEmail} ✓`
+              if (winnerImageUrl) {
+                await api.post('/admin/winner-image', {
+                  image_url: winnerImageUrl,
+                  matchday_label: winnerMatchdayName || undefined,
+                  user_name: winnerUserName || undefined,
+                  points: pts,
+                })
+              }
+              const parts = [`Ganador publicado para ${winnerEmail} ✓`]
+              if (winnerImageUrl) parts.push('+ imagen hero guardada')
+              return parts.join(' ')
             })}
             disabled={!!loading || !winnerEmail}
             className="bg-green-600 text-white text-sm font-bold px-5 py-2 rounded-xl hover:bg-green-700 disabled:opacity-50"
           >
-            {loading === 'winner' ? 'Procesando...' : '🚀 Disparar flujo ganador'}
+            {loading === 'winner' ? 'Publicando...' : '🚀 Publicar ganador'}
           </button>
           {jobResult?.id === 'winner' && <p className="text-xs text-green-600 font-medium">{jobResult.text}</p>}
         </div>
@@ -1166,17 +1406,19 @@ function JobsTab() {
               value={weeklyTestEmail}
               onChange={e => setWeeklyTestEmail(e.target.value)}
               placeholder="vacío = enviar a todos"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]"
             />
           </div>
           <button
-            onClick={() => runJob('weekly', async () => {
-              if (!weeklyTestEmail && !confirm('¿Enviar el email semanal a TODOS los usuarios?')) return ''
-              const { data } = await api.post('/admin/weekly-email', weeklyTestEmail ? { test_email: weeklyTestEmail } : {})
-              return `Email semanal: ${data.data.sent} enviados, ${data.data.failed} fallidos`
-            })}
+            onClick={() => {
+              if (!weeklyTestEmail) { setConfirmWeekly(true); return }
+              runJob('weekly', async () => {
+                const { data } = await api.post('/admin/weekly-email', { test_email: weeklyTestEmail })
+                return `Email semanal: ${data.data.sent} enviados, ${data.data.failed} fallidos`
+              })
+            }}
             disabled={!!loading}
-            className="bg-[#ffffff] text-[#006d2e] text-sm font-bold px-5 py-2 rounded-xl hover:bg-yellow-400 disabled:opacity-50 whitespace-nowrap"
+            className="bg-[#FFDF00] text-[#001A4B] text-sm font-bold px-5 py-2 rounded-xl hover:bg-yellow-400 disabled:opacity-50 whitespace-nowrap"
           >
             {loading === 'weekly' ? 'Enviando...' : '📤 Enviar'}
           </button>
@@ -1194,20 +1436,21 @@ function JobsTab() {
               value={welcomeEmail}
               onChange={e => setWelcomeEmail(e.target.value)}
               placeholder="usuario@ejemplo.com"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]"
             />
           </div>
-          <button
+          <Button
             onClick={() => runJob('welcome', async () => {
               if (!welcomeEmail) { show('Ingresá un email', 'error'); return '' }
               await api.post('/admin/jobs/send-welcome', { email: welcomeEmail })
               return `Email de bienvenida enviado a ${welcomeEmail} ✓`
             })}
             disabled={!!loading || !welcomeEmail}
-            className="bg-[#00923f] text-white text-sm font-bold px-5 py-2 rounded-xl hover:bg-[#005c28] disabled:opacity-50 whitespace-nowrap"
+            loading={loading === 'welcome'}
+            className="whitespace-nowrap"
           >
             {loading === 'welcome' ? 'Enviando...' : '📤 Enviar'}
-          </button>
+          </Button>
         </div>
         {jobResult?.id === 'welcome' && <p className="text-xs text-green-600 font-medium">{jobResult.text}</p>}
       </JobCard>
@@ -1221,7 +1464,7 @@ function JobsTab() {
               value={waTo}
               onChange={e => setWaTo(e.target.value)}
               placeholder="+5491112345678"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]"
             />
           </div>
           <div>
@@ -1229,8 +1472,8 @@ function JobsTab() {
             <input
               value={waMessage}
               onChange={e => setWaMessage(e.target.value)}
-              placeholder="Mensaje de prueba desde PRODE Nueva Chicago"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f]"
+              placeholder="Mensaje de prueba desde PRODE Caballito"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]"
             />
           </div>
           <button
@@ -1247,6 +1490,171 @@ function JobsTab() {
           {jobResult?.id === 'whatsapp' && <p className="text-xs text-green-600 font-medium">{jobResult.text}</p>}
         </div>
       </JobCard>
+      {/* Voice Survey 5 días antes del torneo */}
+      <JobCard
+        title="📞 Voice Survey 5 días"
+        description="Dispara prode.voice_survey via Engage para usuarios con apuestas pendientes a 5 días del primer partido. Usa el template 'Onboarding Workcup 2026' + voice.orkestai."
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">User IDs (opcional, separados por coma)</label>
+            <input
+              value={voice5dayUserIds}
+              onChange={e => setVoice5dayUserIds(e.target.value)}
+              placeholder="vacío = todos los users con bets pendientes en ventana T-5d"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]"
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={voice5dayDryRun}
+              onChange={e => setVoice5dayDryRun(e.target.checked)}
+              className="w-4 h-4"
+            />
+            <span>Dry-run (preview sin llamar)</span>
+          </label>
+          <button
+            onClick={() => {
+              const userIds = voice5dayUserIds.split(',').map(s => s.trim()).filter(Boolean)
+              if (!voice5dayDryRun && userIds.length === 0) {
+                setConfirmVoice5day(true)
+                return
+              }
+              runJob('voice5day', async () => {
+                const body: { user_ids?: string[]; dry_run: boolean } = { dry_run: voice5dayDryRun }
+                if (userIds.length > 0) body.user_ids = userIds
+                const { data } = await api.post('/admin/voice-5day-trigger', body)
+                setVoice5dayPreview(data.data.preview || [])
+                const mode = voice5dayDryRun ? 'preview' : 'disparado'
+                return `Voice 5d ${mode}: ${data.data.users_notified} users, ${data.data.tournaments_in_window} torneos en ventana, ${data.data.skipped} skip`
+              })
+            }}
+            disabled={!!loading}
+            className="bg-purple-600 text-white text-sm font-bold px-5 py-2 rounded-xl hover:bg-purple-700 disabled:opacity-50 whitespace-nowrap"
+          >
+            {loading === 'voice5day' ? 'Procesando...' : voice5dayDryRun ? '🔍 Preview' : '📞 Disparar llamadas'}
+          </button>
+          {jobResult?.id === 'voice5day' && <p className="text-xs text-green-600 font-medium">{jobResult.text}</p>}
+          {voice5dayPreview.length > 0 && (
+            <div className="mt-3 border border-gray-200 rounded-lg overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50 text-gray-600">
+                  <tr>
+                    <th className="text-left px-3 py-2">Torneo</th>
+                    <th className="text-left px-3 py-2">Usuario</th>
+                    <th className="text-left px-3 py-2">Teléfono</th>
+                    <th className="text-right px-3 py-2">Pending</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {voice5dayPreview.map((r, i) => (
+                    <tr key={i}>
+                      <td className="px-3 py-2">{r.tournament}</td>
+                      <td className="px-3 py-2">{r.user}</td>
+                      <td className="px-3 py-2 font-mono text-gray-500">{r.phone}</td>
+                      <td className="px-3 py-2 text-right">{r.pending}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </JobCard>
+
+      {/* ── Reset del Juego ─────────────────────────────────────────────── */}
+      <JobCard
+        title="♻️ Reset del Juego"
+        description="Borra resultados, puntos, ranking, ganadores, streaks y badges. Preserva planillas y pronósticos."
+      >
+        <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 text-xs text-red-700 space-y-1.5">
+          <p className="font-semibold">⚠️ Qué se borra:</p>
+          <ul className="list-disc list-inside space-y-0.5">
+            <li>Resultados de todos los partidos (vuelven a "pending")</li>
+            <li>Puntos de todas las apuestas y planillas</li>
+            <li>Tabla de ranking completa</li>
+            <li>Ganadores (activo e historial de jornadas)</li>
+            <li>Streaks y badges de todos los usuarios</li>
+          </ul>
+          <p className="font-semibold">✅ Qué se preserva:</p>
+          <ul className="list-disc list-inside space-y-0.5">
+            <li>Planillas y pronósticos (goles apostados)</li>
+            <li>Partidos (sin resultados), torneos y usuarios</li>
+          </ul>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Extender fechas de partidos (opcional)
+          </label>
+          <div className="flex gap-2 items-center">
+            <input
+              type="number"
+              min="0"
+              max="8760"
+              value={resetExtendHours}
+              onChange={e => setResetExtendHours(e.target.value)}
+              placeholder="0 hs (no extiende)"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+            />
+            <span className="text-xs text-gray-400 whitespace-nowrap">horas</span>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">Re-abre el período de apuestas empujando los horarios de los partidos hacia adelante.</p>
+        </div>
+        <button
+          onClick={() => setConfirmReset(true)}
+          disabled={!!loading}
+          className="w-full bg-red-600 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+        >
+          {loading === 'reset' ? 'Reseteando...' : '♻️ Resetear juego'}
+        </button>
+        {jobResult?.id === 'reset' && <p className="text-xs text-green-600 font-medium">{jobResult.text}</p>}
+      </JobCard>
+
+      <ConfirmModal
+        open={confirmWeekly}
+        title="Enviar email semanal"
+        message="¿Enviar el email semanal a TODOS los usuarios?"
+        onConfirm={() => {
+          setConfirmWeekly(false)
+          runJob('weekly', async () => {
+            const { data } = await api.post('/admin/weekly-email', {})
+            return `Email semanal: ${data.data.sent} enviados, ${data.data.failed} fallidos`
+          })
+        }}
+        onCancel={() => setConfirmWeekly(false)}
+      />
+
+      <ConfirmModal
+        open={confirmVoice5day}
+        title="Disparar voice survey"
+        message="¿Disparar voice survey a TODOS los users con bets pendientes? Esto cuesta plata 💸"
+        onConfirm={() => {
+          setConfirmVoice5day(false)
+          runJob('voice5day', async () => {
+            const { data } = await api.post('/admin/voice-5day-trigger', { dry_run: false })
+            setVoice5dayPreview(data.data.preview || [])
+            return `Voice 5d disparado: ${data.data.users_notified} users, ${data.data.tournaments_in_window} torneos en ventana, ${data.data.skipped} skip`
+          })
+        }}
+        onCancel={() => setConfirmVoice5day(false)}
+      />
+
+      <ConfirmModal
+        open={confirmReset}
+        title="♻️ Reset del Juego"
+        message="Esto borrará TODOS los resultados, puntos, ranking y ganadores. Las planillas y los pronósticos quedan intactos. Esta acción es IRREVERSIBLE."
+        requireText="RESET"
+        onConfirm={() => {
+          setConfirmReset(false)
+          runJob('reset', async () => {
+            const extendHours = Number(resetExtendHours) || 0
+            const { data } = await api.post('/admin/jobs/reset-game', extendHours > 0 ? { extend_hours: extendHours } : {})
+            return data.message ?? 'Juego reseteado ✓'
+          })
+        }}
+        onCancel={() => setConfirmReset(false)}
+      />
     </div>
   )
 }
@@ -1257,10 +1665,15 @@ function BroadcastTab() {
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<{ total: number; sent: number; failed: number } | null>(null)
+  const [confirmSend, setConfirmSend] = useState(false)
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!message.trim()) { show('Escribí un mensaje', 'error'); return }
-    if (!confirm('¿Enviar este mensaje por WhatsApp a todos los usuarios que dieron su consentimiento?')) return
+    setConfirmSend(true)
+  }
+
+  const doSend = async () => {
+    setConfirmSend(false)
     setSending(true)
     setResult(null)
     try {
@@ -1281,15 +1694,15 @@ function BroadcastTab() {
     <div className="space-y-4 max-w-lg">
       <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
         <div>
-          <h3 className="text-sm font-semibold text-[#006d2e] mb-1">📣 Mensaje broadcast por WhatsApp</h3>
+          <h3 className="text-sm font-semibold text-[#001A4B] mb-1">📣 Mensaje broadcast por WhatsApp</h3>
           <p className="text-xs text-gray-400">Se enviará a todos los jugadores que tienen número de WhatsApp y dieron su consentimiento.</p>
         </div>
         <textarea
           value={message}
           onChange={e => setMessage(e.target.value)}
-          placeholder={"Ejemplo:\n⚽ PRODE Nueva Chicago\n\nRecordá apostar el partido de hoy antes de las 20:00 hs.\n\n👉 chicago.prodecaballito.com/apuestas"}
+          placeholder={"Ejemplo:\n⚽ PRODE Caballito\n\nRecordá apostar el partido de hoy antes de las 20:00 hs.\n\n👉 prodecaballito.com/apuestas"}
           rows={6}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00923f] resize-none"
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5] resize-none"
         />
         <div className="flex items-center justify-between">
           <span className="text-xs text-gray-400">{message.length} caracteres</span>
@@ -1303,13 +1716,163 @@ function BroadcastTab() {
         </div>
         {result && (
           <div className="bg-gray-50 rounded-lg px-4 py-3 text-sm space-y-1">
-            <p className="font-medium text-[#006d2e]">Resultado del envío</p>
+            <p className="font-medium text-[#001A4B]">Resultado del envío</p>
             <p className="text-gray-600">Total destinatarios: <span className="font-semibold">{result.total}</span></p>
             <p className="text-green-600">Enviados: <span className="font-semibold">{result.sent}</span></p>
             {result.failed > 0 && <p className="text-red-500">Fallidos: <span className="font-semibold">{result.failed}</span></p>}
           </div>
         )}
       </div>
+      <ConfirmModal
+        open={confirmSend}
+        title="Enviar broadcast WhatsApp"
+        message="¿Enviar este mensaje por WhatsApp a todos los usuarios que dieron su consentimiento?"
+        onConfirm={doSend}
+        onCancel={() => setConfirmSend(false)}
+      />
+    </div>
+  )
+}
+
+/* ── PollsTab ────────────────────────────────────────────────────────── */
+interface PollOption { id: number; label: string; flag_emoji: string; flag_code: string; vote_count: number }
+interface PollData {
+  id: number; slug: string; title: string; active: boolean; ended: boolean
+  winner_option_id: number | null; options: PollOption[]; total_votes: number
+}
+
+function PollsTab() {
+  const [poll, setPoll] = useState<PollData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const { show } = useToastStore()
+
+  const load = useCallback(async () => {
+    try {
+      const r = await api.get('/public/polls/mundial-2026')
+      setPoll(r.data.data)
+    } catch {
+      setPoll(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const patch = async (body: Record<string, unknown>) => {
+    setSaving(true)
+    try {
+      await api.patch('/public/polls/mundial-2026', body)
+      await load()
+      show('Poll actualizada', 'success')
+    } catch {
+      show('Error al actualizar', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return <div className="py-8 text-center text-gray-400 text-sm">Cargando...</div>
+  if (!poll) return <div className="py-8 text-center text-gray-400 text-sm">Poll no encontrada — ejecutá las migraciones primero.</div>
+
+  const sorted = [...poll.options].sort((a, b) => b.vote_count - a.vote_count)
+  const max = sorted[0]?.vote_count || 1
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-[#001A4B] px-4 py-3 flex items-center justify-between">
+          <span className="text-[10px] font-black text-white uppercase tracking-widest">🗳️ {poll.title}</span>
+          <div className="flex items-center gap-2">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${poll.active && !poll.ended ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}>
+              {poll.ended ? 'Cerrada' : poll.active ? 'Activa' : 'Inactiva'}
+            </span>
+            <span className="text-white/50 text-[10px]">{poll.total_votes.toLocaleString('es-AR')} votos</span>
+          </div>
+        </div>
+
+        {/* Acciones */}
+        <div className="px-4 py-3 flex flex-wrap gap-2 border-b border-gray-100">
+          {!poll.ended ? (
+            <button
+              onClick={() => patch({ ended: true, active: false })}
+              disabled={saving}
+              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50"
+            >
+              🔒 Cerrar votación
+            </button>
+          ) : (
+            <button
+              onClick={() => patch({ ended: false, active: true })}
+              disabled={saving}
+              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors disabled:opacity-50"
+            >
+              🔓 Reabrir votación
+            </button>
+          )}
+          {poll.winner_option_id && (
+            <button
+              onClick={() => patch({ winner_option_id: null })}
+              disabled={saving}
+              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              ✕ Quitar ganador
+            </button>
+          )}
+        </div>
+
+        {/* Resultados */}
+        <div className="p-4 space-y-3">
+          {sorted.map(opt => {
+            const pct = poll.total_votes > 0 ? Math.round((opt.vote_count / poll.total_votes) * 100) : 0
+            const isWinner = poll.winner_option_id === opt.id
+            return (
+              <div key={opt.id} className={`p-3 rounded-xl border transition-all ${isWinner ? 'border-yellow-400 bg-yellow-50' : 'border-gray-100 bg-gray-50'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="flex items-center gap-2 font-semibold text-sm text-gray-800">
+                    {isWinner && <span className="text-yellow-500">★</span>}
+                    <span className="text-lg leading-none">{opt.flag_emoji}</span>
+                    {opt.label}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-gray-600">{pct}% · {opt.vote_count.toLocaleString('es-AR')} votos</span>
+                    {!isWinner && (
+                      <button
+                        onClick={() => patch({ winner_option_id: opt.id, ended: true, active: false })}
+                        disabled={saving}
+                        className="text-[10px] font-bold px-2 py-1 rounded-lg bg-yellow-100 text-yellow-700 hover:bg-yellow-200 transition-colors disabled:opacity-50 whitespace-nowrap"
+                      >
+                        ★ Marcar ganador
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${(opt.vote_count / max) * 100}%`, background: isWinner ? '#f59e0b' : '#0042A5' }}
+                  />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── CampanasTab ─────────────────────────────────────────────────────── */
+function CampanasTab() {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <CampaignBuilder />
+        <CampaignLiveActivity />
+      </div>
+      <EngageVerifyPanel />
     </div>
   )
 }

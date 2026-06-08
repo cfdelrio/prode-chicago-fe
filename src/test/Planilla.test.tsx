@@ -115,11 +115,11 @@ describe('Planilla — renderizado básico', () => {
     }, { timeout: 3000 })
   })
 
-  it('planilla no pagada muestra badge "Sin pagar"', async () => {
+  it('planilla no pagada muestra badge IMPAGO', async () => {
     await setupApi({ planilla: { ...PLANILLA, precio_pagado: false } })
     renderPlanilla()
     await waitFor(() => {
-      expect(screen.getByText(/Sin pagar/i)).toBeInTheDocument()
+      expect(screen.getByText(/IMPAGO/i)).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 

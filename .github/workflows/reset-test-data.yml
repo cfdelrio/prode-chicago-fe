@@ -1,0 +1,88 @@
+name: Reset test data
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Tildá la casilla para confirmar el reset destructivo"
+        type: boolean
+        required: true
+        default: false
+
+jobs:
+  reset:
+    name: Reset matches, scores and rankings
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "true" ]; then
+            echo "::error::Tenés que tildar la casilla 'confirm' para ejecutar."
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Install SQL helper
+        run: |
+          cat > /tmp/run-sql.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          SQL="$1"
+          echo ">> $SQL"
+          jq -cn --arg sql "$SQL" '{sql:$sql}' > /tmp/payload.json
+          META=$(aws lambda invoke \
+            --function-name prode-sql-temp \
+            --payload file:///tmp/payload.json \
+            --cli-binary-format raw-in-base64-out \
+            --region us-east-1 \
+            --output json \
+            /tmp/out.json)
+          echo "lambda meta: $META"
+          echo "--- response ---"
+          cat /tmp/out.json
+          echo
+          if echo "$META" | jq -e '.FunctionError' > /dev/null 2>&1; then
+            echo "::error::Lambda devolvió FunctionError"
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/run-sql.sh
+
+      - name: Diagnose estado constraint
+        run: |
+          /tmp/run-sql.sh "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname = 'matches_estado_check'"
+          /tmp/run-sql.sh "SELECT estado, COUNT(*) AS n FROM matches GROUP BY estado ORDER BY n DESC"
+
+      - name: Preview state (before)
+        run: |
+          /tmp/run-sql.sh "SELECT (SELECT COUNT(*) FROM matches WHERE estado <> 'scheduled' OR resultado_local IS NOT NULL OR resultado_visitante IS NOT NULL OR finished = true) AS matches_to_reset, (SELECT COUNT(*) FROM scores) AS scores_rows, (SELECT COUNT(*) FROM ranking) AS ranking_rows"
+
+      - name: Reset matches (results + state)
+        run: |
+          /tmp/run-sql.sh "UPDATE matches SET resultado_local = NULL, resultado_visitante = NULL, estado = 'scheduled', finished = false WHERE resultado_local IS NOT NULL OR resultado_visitante IS NOT NULL OR estado <> 'scheduled' OR finished = true"
+
+      - name: Wipe scores (puntos + bonus)
+        run: /tmp/run-sql.sh "DELETE FROM scores"
+
+      - name: Wipe global ranking
+        run: /tmp/run-sql.sh "DELETE FROM ranking"
+
+      - name: Wipe tournament rankings (best-effort)
+        continue-on-error: true
+        run: /tmp/run-sql.sh "DELETE FROM tournament_rankings"
+
+      - name: Verify state (after)
+        run: |
+          /tmp/run-sql.sh "SELECT (SELECT COUNT(*) FROM matches WHERE estado <> 'scheduled' OR resultado_local IS NOT NULL OR resultado_visitante IS NOT NULL OR finished = true) AS matches_remaining, (SELECT COUNT(*) FROM scores) AS scores_remaining, (SELECT COUNT(*) FROM ranking) AS ranking_remaining"
+
+      - name: Summary
+        run: |
+          echo "✅ Reset completo. Matches → 'scheduled' sin resultados, scores y rankings vaciados."
+          echo "ℹ️  Los pronósticos (bets) NO se tocaron."

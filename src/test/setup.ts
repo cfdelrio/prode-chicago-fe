@@ -1,5 +1,11 @@
 import '@testing-library/jest-dom'
-import { vi } from 'vitest'
+import { vi, beforeEach } from 'vitest'
+
+// Clear localStorage between tests so persisted state (ej. matriz.filterColors)
+// no contamina otros tests del mismo run.
+beforeEach(() => {
+  try { localStorage.clear() } catch { /* noop */ }
+})
 
 // jsdom doesn't implement matchMedia
 Object.defineProperty(window, 'matchMedia', {

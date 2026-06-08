@@ -1,22 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/api/client'
+import { useApiCall } from './useApiCall'
 import type { Bet } from '@/types'
 
 export function useBets(planillaId: string | undefined) {
   const [bets, setBets] = useState<Record<string, Bet>>({})
-  const [loading, setLoading] = useState(!!planillaId)
+  const { loading, call } = useApiCall({ errorMessage: 'No se pudieron cargar los pronósticos' })
 
   const load = useCallback(async () => {
     if (!planillaId) return
-    setLoading(true)
-    try {
-      const res = await api.get(`/bets/planillas/${planillaId}/bets?t=${Date.now()}`)
+    const data = await call(() => api.get(`/bets/planillas/${planillaId}/bets?t=${Date.now()}`))
+    if (data) {
       const map: Record<string, Bet> = {}
-      for (const b of res.data.data) map[b.match_id] = b
+      for (const b of data) map[b.match_id] = b
       setBets(map)
-    } catch { /* caller handles empty state */ }
-    finally { setLoading(false) }
-  }, [planillaId])
+    }
+  }, [planillaId, call])
 
   useEffect(() => { load() }, [load])
 

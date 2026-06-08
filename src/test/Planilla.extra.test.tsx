@@ -11,9 +11,12 @@ vi.mock('@/store/authStore', () => ({
   }),
 }))
 
-vi.mock('@/store/toastStore', () => ({
-  useToastStore: () => ({ show: vi.fn() }),
-}))
+vi.mock('@/store/toastStore', () => {
+  const store = { show: vi.fn() }
+  return {
+    useToastStore: () => store,
+  }
+})
 
 vi.mock('@/store/teamBadgesStore', () => ({
   useTeamBadgesStore: () => ({ badges: {}, loadBadges: vi.fn() }),
@@ -202,6 +205,7 @@ describe('Planilla — callbacks de MatchCard', () => {
     const { api } = await import('@/api/client')
 
     const bets = [{ id: 'b1', match_id: 'mp1', goles_local: 1, goles_visitante: 0, puntos_obtenidos: null }]
+    vi.clearAllMocks()
     ;(api.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
       if (url.startsWith('/planillas/')) return Promise.resolve({ data: { data: PLANILLA } })
       if (url.startsWith('/matches')) return Promise.resolve({ data: { data: { matches: [makePendingMatch('mp1')] } } })
@@ -216,10 +220,11 @@ describe('Planilla — callbacks de MatchCard', () => {
     const callsBefore = (api.get as ReturnType<typeof vi.fn>).mock.calls.length
 
     // Simular que MatchCard llama onBetDeleted
+    ;(api.get as ReturnType<typeof vi.fn>).mockClear()
     await user.click(screen.getByTestId('delete-mp1'))
 
     // No debe disparar ninguna llamada API adicional (es solo state local)
-    expect((api.get as ReturnType<typeof vi.fn>).mock.calls.length).toBe(callsBefore)
+    expect((api.get as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0)
   })
 })
 

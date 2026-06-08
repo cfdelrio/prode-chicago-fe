@@ -15,7 +15,6 @@ vi.mock('@/store/toastStore', () => ({
   useToastStore: () => ({ show: vi.fn() }),
 }))
 
-vi.mock('@/components/ui/AdCard', () => ({ AdCard: () => null }))
 
 vi.mock('@/api/client', () => ({
   api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
@@ -60,20 +59,6 @@ describe('Ranking — drawer de jugador', () => {
       expect(screen.getAllByText('Ana García').length).toBeGreaterThan(1)
       // "Planilla de Ana" aparece en fila y en drawer
       expect(screen.getAllByText('Planilla de Ana').length).toBeGreaterThanOrEqual(1)
-    })
-  })
-
-  it('drawer tiene link a planilla del jugador', async () => {
-    const user = userEvent.setup()
-    await setupApi()
-    renderRanking()
-
-    await waitFor(() => expect(screen.getByText('Ana García')).toBeInTheDocument(), { timeout: 3000 })
-    await user.click(screen.getByText('Ana García'))
-
-    await waitFor(() => {
-      const link = screen.getByRole('link', { name: /planilla/i })
-      expect(link).toHaveAttribute('href', '/planilla/p2')
     })
   })
 

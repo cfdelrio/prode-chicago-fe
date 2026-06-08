@@ -1,27 +1,42 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
+import { useToastStore } from '@/store/toastStore'
 import { useT } from '@/hooks/useT'
+import { useNotificationHistory } from '@/hooks/useNotificationHistory'
 import { api } from '@/api/client'
 import { GanadoresModal } from './GanadoresModal'
+import { NotificationHistoryDrawer } from '../NotificationHistoryDrawer'
 
 export function Navbar() {
   const { user, logout, updateUser, isAdmin } = useAuthStore()
+  const { show } = useToastStore()
   const t = useT()
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [switchingLang, setSwitchingLang] = useState(false)
   const [showGanadores, setShowGanadores] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const { unreadCount } = useNotificationHistory()
+  const [hasGanadas, setHasGanadas] = useState(false)
 
-  const navLinks = [
+  useEffect(() => {
+    if (!user?.id) return
+    api.get('/matchdays/me').then(res => {
+      const history: { is_winner: boolean }[] = res.data?.data?.history ?? []
+      setHasGanadas(history.some(m => m.is_winner))
+    }).catch(() => {})
+  }, [user?.id])
+
+  const navLinks: { to: string; label: string; icon: string; external?: boolean }[] = [
+    { to: '/reglamento',                label: t.nav.rules,   icon: '📖' },
     { to: '/',                          label: t.nav.home,    icon: '🏠' },
     { to: '/apuestas',                  label: t.nav.bets,    icon: '⚽' },
     { to: '/matriz',                    label: t.nav.matrix,  icon: '📊' },
     { to: '/ranking',                   label: t.nav.ranking, icon: '🏆' },
+    ...(hasGanadas ? [{ to: '/ganadas', label: 'Ganadas',     icon: '🥇' }] : []),
     { to: '/fixture',                   label: t.nav.fixture, icon: '🗓️' },
-    { to: '/reglamento',                label: t.nav.rules,   icon: '📖' },
-    { to: '/premios.html',      label: t.nav.prizes,  icon: '🎁', external: true },
   ]
 
   const adminLinks = [
@@ -37,13 +52,13 @@ export function Navbar() {
   const handleToggleLang = async () => {
     if (!user || switchingLang) return
     const newLang = user.idioma_pref === 'pt' ? 'es' : 'pt'
-    // Actualización optimista: cambia en el store + localStorage inmediatamente
     updateUser({ idioma_pref: newLang })
     setSwitchingLang(true)
     try {
       await api.put(`/users/${user.id}`, { idioma_pref: newLang })
-    } catch { /* silent — localStorage ya tiene el valor correcto */ }
-    finally {
+    } catch (err: any) {
+      show('No se pudo cambiar el idioma', 'error')
+    } finally {
       setSwitchingLang(false)
     }
   }
@@ -61,7 +76,7 @@ export function Navbar() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 font-bold text-lg shrink-0">
           <span style={{ color: 'var(--theme-secondary)' }}>⚽</span>
-          <span className="hidden sm:block text-sm font-semibold">PRODE Nueva Chicago</span>
+          <span className="hidden sm:block text-sm font-semibold">PRODE Caballito</span>
         </Link>
 
         {/* Desktop links */}
@@ -119,7 +134,7 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Right: lang toggle + avatar */}
+        {/* Right: lang toggle + notifications + avatar */}
         <div className="flex items-center gap-2">
           {/* Language toggle */}
           <button
@@ -129,6 +144,20 @@ export function Navbar() {
             className="text-lg leading-none px-1 py-0.5 rounded hover:bg-white/10 transition-colors disabled:opacity-50"
           >
             {langFlag}
+          </button>
+
+          {/* Notifications button */}
+          <button
+            onClick={() => setShowNotifications(true)}
+            title="Notificaciones"
+            className="relative text-lg leading-none px-1 py-0.5 rounded hover:bg-white/10 transition-colors"
+          >
+            🔔
+            {unreadCount > 0 && (
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-black">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </div>
+            )}
           </button>
 
           <Link to="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
@@ -203,6 +232,12 @@ export function Navbar() {
       )}
 
       {showGanadores && <GanadoresModal onClose={() => setShowGanadores(false)} />}
+      {showNotifications && (
+        <NotificationHistoryDrawer
+          isOpen={showNotifications}
+          onClose={() => setShowNotifications(false)}
+        />
+      )}
 
       {/* Mobile bottom tab bar — compacto, fuera del <nav> sticky */}
       <div

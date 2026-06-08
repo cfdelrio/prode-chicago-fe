@@ -76,7 +76,7 @@ describe('Profile — renderizado básico', () => {
   it('sección WhatsApp está visible', async () => {
     await setupApi()
     renderProfile()
-    expect(screen.getByText(/WhatsApp/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /WhatsApp visible para otros jugadores/i })).toBeInTheDocument()
   })
 })
 

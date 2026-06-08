@@ -66,7 +66,7 @@ test('el banner emocional de marca está visible', async ({ page }) => {
     test.skip(true, 'Usuario no es #1 — skip')
     return
   }
-  await expect(page.getByText(/Desde ProdeCaballito/i)).toBeVisible()
+  await expect(page.getByText(/Desde Prode Nueva Chicago/i)).toBeVisible()
   await expect(page.getByText(/tratarte como te merecés/i)).toBeVisible()
 })
 

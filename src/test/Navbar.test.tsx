@@ -71,9 +71,9 @@ describe('Navbar — renderizado básico', () => {
     })
   })
 
-  it('muestra el logo PRODE Caballito', () => {
+  it('muestra el logo PRODE Nueva Chicago', () => {
     renderNavbar()
-    expect(screen.getByText('PRODE Caballito')).toBeInTheDocument()
+    expect(screen.getByText('PRODE Nueva Chicago')).toBeInTheDocument()
   })
 
   it('retorna null cuando no hay usuario', () => {

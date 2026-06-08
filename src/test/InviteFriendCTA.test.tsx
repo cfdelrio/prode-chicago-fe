@@ -27,14 +27,14 @@ describe('buildInviteMessage', () => {
     const msg = buildInviteMessage('Carlos')
     expect(msg).toContain('Soy Carlos')
     expect(msg).toContain('PRODE del Mundial 2026')
-    expect(msg).toContain('https://chicago.prodecaballito.com')
+    expect(msg).toContain('https://hr.prodecaballito.com')
   })
 
   it('usa la versión genérica cuando no hay invitador', () => {
     const msg = buildInviteMessage()
     expect(msg).not.toContain('Soy ')
     expect(msg).toContain('Sumate al PRODE')
-    expect(msg).toContain('https://chicago.prodecaballito.com')
+    expect(msg).toContain('https://hr.prodecaballito.com')
   })
 
   it('incluye el precio de la boleta', () => {

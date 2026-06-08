@@ -1,0 +1,120 @@
+name: E2E Championship
+
+on:
+  # Manual desde GitHub Actions (con opción de correr o no el teardown)
+  workflow_dispatch:
+    inputs:
+      skip_teardown:
+        description: "Saltar el teardown (dejar datos en prod para inspeccionar)"
+        type: boolean
+        required: false
+        default: false
+
+  # Automático después de un deploy exitoso (opcional — comentar si no se quiere)
+  # workflow_run:
+  #   workflows: ["Deploy to S3 + CloudFront"]
+  #   types: [completed]
+
+jobs:
+  championship:
+    name: Simular campeonato completo
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    # Si se disparó por workflow_run, solo correr si el deploy fue exitoso
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      # ── Setup ──────────────────────────────────────────────────────────────
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright + Chromium
+        run: npx playwright install chromium --with-deps
+
+      # ── Championship ────────────────────────────────────────────────────────
+      # Un solo comando corre todo en orden:
+      #   1. globalSetup  → crea torneo, partidos, planillas via API
+      #   2. championship-auth (dep) → loguea lider/rival/virtual, guarda auth states
+      #   3. specs 01-10  → campeonato completo en el browser (workers=1 = secuencial)
+      #   4. globalTeardown → limpia todos los datos [E2E] de producción
+      #
+      # Si skip_teardown=true, pasamos una variable de entorno que globalTeardown chequeará.
+
+      # E2E_RUN_TIMESTAMP se genera UNA SOLA VEZ y se comparte entre
+      # championship-auth (proceso 1) y globalSetup (proceso 2). Sin esto,
+      # cada proceso llama Date.now() con distinto valor → distintos emails
+      # → globalSetup crea planillas para un usuario distinto al autenticado.
+      - name: Set E2E run timestamp
+        run: echo "E2E_RUN_TIMESTAMP=$(date +%s%3N)" >> $GITHUB_ENV
+
+      - name: Correr campeonato E2E
+        env:
+          # Timestamp compartido entre championship-auth y globalSetup
+          E2E_RUN_TIMESTAMP:  ${{ env.E2E_RUN_TIMESTAMP }}
+          # Admin (mismo secret que el e2e regular)
+          E2E_ADMIN_EMAIL:    ${{ secrets.E2E_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          # Usuarios de prueba (secrets opcionales — si no existen, usa defaults)
+          E2E_LIDER_EMAIL:    ${{ secrets.E2E_LIDER_EMAIL }}
+          E2E_LIDER_PASS:     ${{ secrets.E2E_LIDER_PASS }}
+          E2E_RIVAL_EMAIL:    ${{ secrets.E2E_RIVAL_EMAIL }}
+          E2E_RIVAL_PASS:     ${{ secrets.E2E_RIVAL_PASS }}
+          E2E_VIRTUAL_EMAIL:  ${{ secrets.E2E_VIRTUAL_EMAIL }}
+          E2E_VIRTUAL_PASS:   ${{ secrets.E2E_VIRTUAL_PASS }}
+          # API base URL (usa el default del código si no está definida)
+          API_BASE:           ${{ secrets.E2E_API_BASE }}
+          # Flag para saltar el teardown en caso de debugging
+          E2E_SKIP_TEARDOWN:  ${{ inputs.skip_teardown }}
+        run: npx playwright test --project=championship --workers=1
+
+      # ── Artefactos ─────────────────────────────────────────────────────────
+
+      - name: Subir reporte HTML si fallan tests
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: championship-report-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+      - name: Subir screenshots/videos si fallan tests
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: championship-failures-${{ github.run_id }}
+          path: test-results/
+          retention-days: 7
+
+      # ── Resumen en el job summary de GitHub ────────────────────────────────
+
+      - name: Resumen del campeonato
+        if: always()
+        run: |
+          echo "## 🏆 E2E Championship" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered by | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Skip teardown | ${{ inputs.skip_teardown || 'false' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ **Todos los tests pasaron** — el campeonato está funcionando de punta a punta." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Algunos tests fallaron** — ver reporte en los artefactos del job." >> $GITHUB_STEP_SUMMARY
+          fi

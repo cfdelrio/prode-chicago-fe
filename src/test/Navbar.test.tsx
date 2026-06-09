@@ -71,9 +71,11 @@ describe('Navbar — renderizado básico', () => {
     })
   })
 
-  it('muestra el logo PRODE High Rolling', () => {
+  it('muestra el logo PRODE HR', () => {
     renderNavbar()
-    expect(screen.getByText('PRODE High Rolling')).toBeInTheDocument()
+    // El logo se renderiza como "PRODE" + "HR" (HR dorado) en spans separados
+    expect(screen.getByText('PRODE')).toBeInTheDocument()
+    expect(screen.getByText('HR')).toBeInTheDocument()
   })
 
   it('retorna null cuando no hay usuario', () => {

@@ -2,6 +2,23 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* ── HR PREMIUM ANIMATIONS ───────────────────────────────────────── */
+@keyframes goldShimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+@keyframes premiumGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(201,162,74,0.12), 0 0 40px rgba(201,162,74,0.04); }
+  50%       { box-shadow: 0 0 35px rgba(201,162,74,0.22), 0 0 60px rgba(201,162,74,0.08); }
+}
+@keyframes borderGold {
+  0%, 100% { border-color: rgba(201,162,74,0.25); }
+  50%       { border-color: rgba(201,162,74,0.50); }
+}
+
+.hr-glow         { animation: premiumGlow 4s ease-in-out infinite; }
+.hr-border-pulse { animation: borderGold  3s ease-in-out infinite; }
+
 /* ── GLOBAL ANIMATIONS (DESIGN_RULES.md ESPN VIBE) ──────────────────── */
 @keyframes flipDown {
   from { transform: perspective(280px) rotateX(-82deg); }
@@ -20,8 +37,8 @@
   to   { transform: translateX(0); opacity: 1; }
 }
 @keyframes glow {
-  0%, 100% { box-shadow: 0 0 10px rgba(16, 185, 129, 0.3), 0 0 20px rgba(255, 223, 0, 0.2); }
-  50% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.5), 0 0 30px rgba(255, 223, 0, 0.3); }
+  0%, 100% { box-shadow: 0 0 10px rgba(201, 162, 74, 0.25), 0 0 20px rgba(201, 162, 74, 0.10); }
+  50%       { box-shadow: 0 0 20px rgba(201, 162, 74, 0.40), 0 0 40px rgba(201, 162, 74, 0.18); }
 }
 @keyframes scoreboardPulse {
   0%, 100% { opacity: 1; }
@@ -76,15 +93,16 @@
 
 /* ── THEME CSS VARIABLES ────────────────────────────────────────── */
 
+/* ── HR PREMIUM — near-black / 18k gold ──────────────────────────── */
 :root,
 [data-theme="neutral"] {
-  --theme-nav-bg:      #001A4B;
-  --theme-nav-bg-2:    #002B7F;
-  --theme-primary:     #0042A5;
-  --theme-secondary:   #FFDF00;
-  --theme-accent-text: #001A4B;
-  --theme-on-primary:  #ffffff;
-  --theme-page-accent: #0042A5;   /* primary — contraste 7.5:1 sobre blanco */
+  --theme-nav-bg:      #06070E;   /* near-black deep navy */
+  --theme-nav-bg-2:    #03040A;   /* darker for mobile menu */
+  --theme-primary:     #1A1A2E;   /* dark blue-black */
+  --theme-secondary:   #C9A24A;   /* 18k gold */
+  --theme-accent-text: #06070E;
+  --theme-on-primary:  #F0EAD6;   /* warm cream */
+  --theme-page-accent: #C9A24A;   /* gold — 7.8:1 on dark bg */
 }
 
 /* Boca Juniors — azul profundo / oro cálido */
@@ -197,9 +215,18 @@
 }
 
 /* ── PAGE-LEVEL THEME VARIABLES ─────────────────────────────────── */
-/* Equipos claros: fondo gris suave, cards blancas                   */
+
+/* HR Premium default (neutral): near-black with gold tints          */
 :root,
-[data-theme="neutral"],
+[data-theme="neutral"] {
+  --theme-page-bg:         #070912;
+  --theme-page-surface:    rgba(201,162,74,0.05);
+  --theme-page-border:     rgba(201,162,74,0.20);
+  --theme-page-text:       #F0EAD6;
+  --theme-page-text-muted: rgba(240,234,214,0.50);
+}
+
+/* Equipos claros: fondo gris suave, cards blancas                   */
 [data-theme="river"],
 [data-theme="racing"],
 [data-theme="estudiantes"],
@@ -331,13 +358,34 @@ body {
 
 a { text-decoration: none; color: inherit; }
 
-/* ── FORM INPUTS — always dark text on light bg regardless of theme ─ */
-/* Dark themes set --theme-page-text to near-white; inputs inherit it  */
-/* and become invisible on their white background. Class selectors      */
-/* (t-surface, t-text-page, etc.) have higher specificity and override. */
-input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
-select,
-textarea {
+/* ── FORM INPUTS — light themes keep dark text on white bg ───────── */
+[data-theme="river"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+[data-theme="racing"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+[data-theme="estudiantes"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+[data-theme="argentina"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+[data-theme="river"] select, [data-theme="racing"] select,
+[data-theme="estudiantes"] select, [data-theme="argentina"] select,
+[data-theme="river"] textarea, [data-theme="racing"] textarea,
+[data-theme="estudiantes"] textarea, [data-theme="argentina"] textarea {
   color: #111827;
   background-color: #ffffff;
+}
+
+/* Dark themes (neutral/HR + dark team themes) — dark glass inputs   */
+:root input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+[data-theme="neutral"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+[data-theme="boca"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+[data-theme="independiente"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+[data-theme="huracan"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+[data-theme="sanlorenzo"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+[data-theme="nueva-chicago"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+:root select, [data-theme="neutral"] select,
+[data-theme="boca"] select, [data-theme="independiente"] select,
+[data-theme="huracan"] select, [data-theme="sanlorenzo"] select, [data-theme="nueva-chicago"] select,
+:root textarea, [data-theme="neutral"] textarea,
+[data-theme="boca"] textarea, [data-theme="independiente"] textarea,
+[data-theme="huracan"] textarea, [data-theme="sanlorenzo"] textarea, [data-theme="nueva-chicago"] textarea {
+  color: #F0EAD6;
+  background-color: rgba(255,255,255,0.06);
+  border-color: rgba(201,162,74,0.25);
 }

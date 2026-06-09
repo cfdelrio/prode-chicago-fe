@@ -34,7 +34,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 function HomeRoute() {
   const { token } = useAuthStore()
-  if (!token) return <AppLayout adSlot={null}><Reglamento showHomePromo /></AppLayout>
+  if (!token) return <AppLayout adSlot={null}><Reglamento /></AppLayout>
   return <AppLayout adSlot={null}><Home /></AppLayout>
 }
 

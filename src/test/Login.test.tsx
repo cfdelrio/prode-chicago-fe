@@ -41,7 +41,7 @@ describe('Login', () => {
     renderLogin()
     expect(screen.getByPlaceholderText('tu@email.com')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('••••••')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /iniciar sesión/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /ingresar/i })).toBeInTheDocument()
   })
 
   it('muestra link a registro', () => {
@@ -66,7 +66,7 @@ describe('Login', () => {
     renderLogin()
     await user.type(screen.getByPlaceholderText('tu@email.com'), 'test@test.com')
     await user.type(screen.getByPlaceholderText('••••••'), 'pass123')
-    await user.click(screen.getByRole('button', { name: /iniciar sesión/i }))
+    await user.click(screen.getByRole('button', { name: /ingresar/i }))
 
     await waitFor(() => {
       expect(mockSetAuth).toHaveBeenCalledWith(
@@ -88,7 +88,7 @@ describe('Login', () => {
     renderLogin()
     await user.type(screen.getByPlaceholderText('tu@email.com'), 'bad@test.com')
     await user.type(screen.getByPlaceholderText('••••••'), 'wrong')
-    await user.click(screen.getByRole('button', { name: /iniciar sesión/i }))
+    await user.click(screen.getByRole('button', { name: /ingresar/i }))
 
     await waitFor(() => {
       expect(mockShow).toHaveBeenCalledWith('Credenciales inválidas', 'error')
@@ -104,7 +104,7 @@ describe('Login', () => {
     renderLogin()
     await user.type(screen.getByPlaceholderText('tu@email.com'), 'bad@test.com')
     await user.type(screen.getByPlaceholderText('••••••'), 'wrong')
-    await user.click(screen.getByRole('button', { name: /iniciar sesión/i }))
+    await user.click(screen.getByRole('button', { name: /ingresar/i }))
 
     await waitFor(() => {
       expect(mockShow).toHaveBeenCalledWith('Error al iniciar sesión', 'error')
@@ -122,7 +122,7 @@ describe('Login', () => {
     renderLogin()
     await user.type(screen.getByPlaceholderText('tu@email.com'), 'test@test.com')
     await user.type(screen.getByPlaceholderText('••••••'), 'pass')
-    await user.click(screen.getByRole('button', { name: /iniciar sesión/i }))
+    await user.click(screen.getByRole('button', { name: /ingresar/i }))
 
     expect(screen.getByRole('button', { name: /ingresando/i })).toBeDisabled()
 

@@ -48,13 +48,13 @@ function FlipDigit({ digit, animate = false }: { digit: string; animate?: boolea
   }
   return (
     <div style={{ position: 'relative', width: FW, height: FH, borderRadius: 5, overflow: 'hidden',
-      boxShadow: '0 3px 10px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset' }}>
+      boxShadow: '0 3px 10px rgba(0,0,0,0.8), 0 0 0 1px rgba(201,162,74,0.15)' }}>
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: halfH,
-        background: '#242428', overflow: 'hidden' }}>
+        background: '#181820', overflow: 'hidden' }}>
         <span style={{ ...numStyle, top: topOffset }}>{digit}</span>
       </div>
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: halfH,
-        background: '#1a1a1c', overflow: 'hidden' }}>
+        background: '#10101A', overflow: 'hidden' }}>
         <span style={{ ...numStyle, top: botOffset }}>{digit}</span>
       </div>
       <div style={{ position: 'absolute', top: '50%', left: 0, right: 0,
@@ -143,9 +143,10 @@ function NextMatchBanner({ matches, bets }: { matches: Match[]; bets: Record<str
 
   return (
     <div style={{
-      background: 'linear-gradient(135deg, #0a0f1e 0%, #001A4B 60%, #0a2060 100%)',
+      background: 'linear-gradient(135deg, #070912 0%, #0D0E1E 60%, #0A0B18 100%)',
       borderRadius: 16, padding: '16px 20px 18px',
-      border: '1px solid rgba(255,255,255,0.1)',
+      border: '1px solid rgba(201,162,74,0.2)',
+      boxShadow: '0 2px 20px rgba(0,0,0,0.4)',
     }}>
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -184,9 +185,10 @@ function NextMatchBanner({ matches, bets }: { matches: Match[]; bets: Record<str
         {!hasBet && (
           <Link to="/apuestas" style={{
             display: 'inline-block', marginTop: 8,
-            background: '#FFCC00', color: '#001A4B',
+            background: 'linear-gradient(135deg, #C9A24A, #D4BB7C)', color: '#070912',
             fontSize: 11, fontWeight: 800, padding: '4px 12px',
             borderRadius: 20, textDecoration: 'none',
+            boxShadow: '0 2px 8px rgba(201,162,74,0.35)',
           }}>
             🎯 Apostar →
           </Link>
@@ -220,23 +222,31 @@ function NextMatchDesktopPanel({ matches, bets }: { matches: Match[]; bets: Reco
   const cdSecs  = Math.floor((diffMs % 60000) / 1000)
 
   return (
-    <div className="hidden md:flex flex-col justify-between px-6 py-6 md:flex-[2] border-l border-gray-100 bg-white gap-3">
+    <div
+      className="hidden md:flex flex-col justify-between px-6 py-6 md:flex-[2] gap-3"
+      style={{ borderLeft: '1px solid rgba(201,162,74,0.18)', background: 'rgba(6,7,14,0.7)' }}
+    >
       <div className="text-center">
-        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">
+        <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'rgba(201,162,74,0.55)' }}>
           FALTA PARA EL PRÓXIMO PARTIDO
         </p>
         <div className="flex items-end justify-center gap-1.5">
           {[{ v: cdDays, l: 'DÍAS' }, { v: cdHours, l: 'HS' }, { v: cdMins, l: 'MIN' }, { v: cdSecs, l: 'SEG' }].map(({ v, l }, i) => (
             <div key={l} className="flex items-end gap-1.5">
-              {i > 0 && <span className="text-gray-200 font-black text-lg pb-4">:</span>}
+              {i > 0 && <span className="font-black text-lg pb-4" style={{ color: 'rgba(201,162,74,0.3)' }}>:</span>}
               <div className="flex flex-col items-center gap-1">
                 <div
                   className="text-2xl font-black tabular-nums rounded-lg px-2 py-1 min-w-[42px] text-center leading-none"
-                  style={{ background: '#001A4B', color: l === 'SEG' ? 'rgba(255,223,0,0.6)' : '#FFDF00', fontFamily: "'Arial Black', Arial, sans-serif" }}
+                  style={{
+                    background: '#0E0F1E',
+                    color: l === 'SEG' ? 'rgba(201,162,74,0.55)' : '#C9A24A',
+                    fontFamily: "'Arial Black', Arial, sans-serif",
+                    border: '1px solid rgba(201,162,74,0.2)',
+                  }}
                 >
                   {pad2(v)}
                 </div>
-                <span className="text-[8px] font-black text-gray-400 tracking-widest">{l}</span>
+                <span className="text-[8px] font-black tracking-widest" style={{ color: 'rgba(201,162,74,0.4)' }}>{l}</span>
               </div>
             </div>
           ))}
@@ -244,8 +254,8 @@ function NextMatchDesktopPanel({ matches, bets }: { matches: Match[]; bets: Reco
       </div>
 
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">⚡ Próximo partido</p>
-        <Link to="/fixture" className="text-[10px] font-semibold text-blue-500 hover:underline">
+        <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'rgba(201,162,74,0.55)' }}>⚡ Próximo partido</p>
+        <Link to="/fixture" className="text-[10px] font-semibold hover:underline" style={{ color: '#C9A24A' }}>
           Ver fixture →
         </Link>
       </div>
@@ -253,35 +263,35 @@ function NextMatchDesktopPanel({ matches, bets }: { matches: Match[]; bets: Reco
       <div className="flex items-center justify-around gap-2">
         <div className="flex flex-col items-center gap-1.5">
           <span className="text-5xl leading-none">{teamFlag(match.home_team) || '🏳'}</span>
-          <p className="text-xs font-bold text-gray-700 text-center">{match.home_team}</p>
+          <p className="text-xs font-bold text-center" style={{ color: '#F0EAD6' }}>{match.home_team}</p>
         </div>
-        <p className="text-sm font-black text-gray-300 px-2">VS</p>
+        <p className="text-sm font-black px-2" style={{ color: 'rgba(201,162,74,0.4)' }}>VS</p>
         <div className="flex flex-col items-center gap-1.5">
           <span className="text-5xl leading-none">{teamFlag(match.away_team) || '🏳'}</span>
-          <p className="text-xs font-bold text-gray-700 text-center">{match.away_team}</p>
+          <p className="text-xs font-bold text-center" style={{ color: '#F0EAD6' }}>{match.away_team}</p>
         </div>
       </div>
 
-      <p className="text-center text-[11px] text-gray-400">📅 {dateStr} hs</p>
+      <p className="text-center text-[11px]" style={{ color: 'rgba(201,162,74,0.5)' }}>📅 {dateStr} hs</p>
 
       {hasBet ? (
         <div>
-          <div className="flex items-center justify-center gap-2 bg-green-50 border border-green-100 rounded-xl py-3">
-            <span className="text-[10px] font-bold text-gray-400 tracking-wide">{teamAbbr(match.home_team)}</span>
-            <span className="font-black text-2xl text-green-600">{bets[match.id].goles_local}</span>
-            <span className="text-gray-300 font-bold text-xl">—</span>
-            <span className="font-black text-2xl text-green-600">{bets[match.id].goles_visitante}</span>
-            <span className="text-[10px] font-bold text-gray-400 tracking-wide">{teamAbbr(match.away_team)}</span>
+          <div className="flex items-center justify-center gap-2 rounded-xl py-3" style={{ background: 'rgba(201,162,74,0.08)', border: '1px solid rgba(201,162,74,0.2)' }}>
+            <span className="text-[10px] font-bold tracking-wide" style={{ color: 'rgba(240,234,214,0.4)' }}>{teamAbbr(match.home_team)}</span>
+            <span className="font-black text-2xl" style={{ color: '#C9A24A' }}>{bets[match.id].goles_local}</span>
+            <span className="font-bold text-xl" style={{ color: 'rgba(201,162,74,0.3)' }}>—</span>
+            <span className="font-black text-2xl" style={{ color: '#C9A24A' }}>{bets[match.id].goles_visitante}</span>
+            <span className="text-[10px] font-bold tracking-wide" style={{ color: 'rgba(240,234,214,0.4)' }}>{teamAbbr(match.away_team)}</span>
           </div>
-          <p className="text-center text-[10px] text-gray-400 mt-2 uppercase tracking-wider font-bold">
+          <p className="text-center text-[10px] mt-2 uppercase tracking-wider font-bold" style={{ color: 'rgba(240,234,214,0.4)' }}>
             TU PRONÓSTICO ✏️
           </p>
         </div>
       ) : (
         <Link
           to="/apuestas"
-          className="block text-center font-black text-sm py-3 rounded-xl hover:brightness-95 transition-all"
-          style={{ background: '#FFDF00', color: '#001A4B' }}
+          className="block text-center font-black text-sm py-3 rounded-xl hover:brightness-105 transition-all"
+          style={{ background: 'linear-gradient(135deg, #C9A24A, #D4BB7C)', color: '#070912', boxShadow: '0 4px 16px rgba(201,162,74,0.35)' }}
         >
           🎯 Apostar ahora →
         </Link>
@@ -293,19 +303,19 @@ function NextMatchDesktopPanel({ matches, bets }: { matches: Match[]; bets: Reco
 function HomeSkeleton() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
-      <div className="bg-[#001A4B] rounded-2xl p-6" style={{ minHeight: 220 }}>
+      <div className="rounded-2xl p-6" style={{ minHeight: 220, background: 'linear-gradient(135deg, #06070E, #0E0F1F)', border: '1px solid rgba(201,162,74,0.15)' }}>
         <div className="space-y-3">
-          <div className="animate-pulse bg-yellow-400/20 h-3 w-28 rounded-full" />
+          <div className="animate-pulse h-3 w-28 rounded-full" style={{ background: 'rgba(201,162,74,0.25)' }} />
           <div className="space-y-1.5">
-            <div className="animate-pulse bg-white/30 h-8 w-52 rounded" />
-            <div className="animate-pulse bg-white/25 h-8 w-44 rounded" />
-            <div className="animate-pulse bg-white/20 h-8 w-48 rounded" />
+            <div className="animate-pulse h-8 w-52 rounded" style={{ background: 'rgba(240,234,214,0.12)' }} />
+            <div className="animate-pulse h-8 w-44 rounded" style={{ background: 'rgba(240,234,214,0.09)' }} />
+            <div className="animate-pulse h-8 w-48 rounded" style={{ background: 'rgba(240,234,214,0.07)' }} />
           </div>
-          <div className="animate-pulse bg-yellow-400/40 h-12 w-48 rounded-xl mt-3" />
+          <div className="animate-pulse h-12 w-48 rounded-xl mt-3" style={{ background: 'rgba(201,162,74,0.3)' }} />
         </div>
       </div>
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="animate-pulse bg-gray-800 h-10" />
+      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(201,162,74,0.15)' }}>
+        <div className="animate-pulse h-10" style={{ background: 'rgba(201,162,74,0.1)' }} />
         <div className="p-4 space-y-3">
           {[0, 1, 2, 3, 4].map(i => (
             <div key={i} className="flex gap-3 items-center">
@@ -509,13 +519,13 @@ export function Home() {
     <div className="max-w-4xl mx-auto px-4 py-20 flex flex-col items-center gap-4 text-center">
       <span className="text-6xl animate-bounce">📡</span>
       <div>
-        <h2 className="text-2xl font-black text-[#001A4B] mb-2">Oops, conexión perdida</h2>
-        <p className="font-semibold text-gray-600 text-sm">{t.home.loadError}</p>
+        <h2 className="text-2xl font-black mb-2" style={{ color: '#F0EAD6' }}>Oops, conexión perdida</h2>
+        <p className="font-semibold text-sm" style={{ color: 'rgba(240,234,214,0.55)' }}>{t.home.loadError}</p>
       </div>
       <button
         onClick={() => loadData()}
-        className="px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:brightness-110 active:scale-95 mt-2"
-        style={{ background: 'var(--theme-primary)', boxShadow: '0 4px 20px rgba(var(--theme-primary-rgb, 0, 66, 165), 0.4)' }}
+        className="px-6 py-3 rounded-xl font-bold text-sm transition-all hover:brightness-110 active:scale-95 mt-2"
+        style={{ background: 'linear-gradient(135deg, #C9A24A, #D4BB7C)', color: '#070912', boxShadow: '0 4px 20px rgba(201,162,74,0.4)' }}
       >
         {t.home.loadErrorRetry}
       </button>
@@ -690,112 +700,120 @@ export function Home() {
 
         {/* ── PRECIO ──────────────────────────────────────────── */}
         <div
-          className="rounded-2xl overflow-hidden shadow-md border section-animate"
-          style={{ background: 'linear-gradient(135deg, #FFF8DC 0%, #FFFBEB 100%)', borderColor: '#FFDF00', animation: 'slideUp 0.6s ease-out' }}
+          className="rounded-2xl overflow-hidden section-animate"
+          style={{
+            background: 'linear-gradient(135deg, rgba(201,162,74,0.06) 0%, rgba(201,162,74,0.02) 100%)',
+            border: '1px solid rgba(201,162,74,0.28)',
+            animation: 'slideUp 0.6s ease-out',
+            boxShadow: '0 2px 20px rgba(0,0,0,0.3)',
+          }}
         >
-          <div className="px-4 py-3 flex items-center gap-2" style={{ background: '#001A4B' }}>
-            <span className="text-[10px] font-black text-white uppercase tracking-widest">🎫 Precio</span>
+          <div className="px-4 py-3 flex items-center gap-2" style={{ background: 'rgba(201,162,74,0.10)', borderBottom: '1px solid rgba(201,162,74,0.18)' }}>
+            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#C9A24A' }}>🎫 Precio</span>
           </div>
           <div className="p-4 text-center">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">1 boleta</p>
-            <p className="text-2xl font-black text-[#001A4B] leading-none">$20.000</p>
-            <p className="text-[10px] text-gray-500 mt-1.5">Una planilla del Mundial</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'rgba(201,162,74,0.55)' }}>1 boleta</p>
+            <p className="text-2xl font-black leading-none" style={{ color: '#C9A24A' }}>$20.000</p>
+            <p className="text-[10px] mt-1.5" style={{ color: 'rgba(240,234,214,0.45)' }}>Una planilla del Mundial</p>
           </div>
-          <p className="px-4 py-2.5 text-[11px] text-gray-600 border-t border-amber-200 bg-white/60">
+          <p className="px-4 py-2.5 text-[11px]" style={{ color: 'rgba(240,234,214,0.5)', borderTop: '1px solid rgba(201,162,74,0.12)' }}>
             Podés tener varias planillas — cada una compite por separado en el ranking.
           </p>
         </div>
 
         {/* ── CÓMO FUNCIONA ───────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" style={{ animation: 'slideUp 0.6s ease-out 0.1s both' }}>
-          <div className="bg-[#001A4B] px-4 py-3">
-            <p className="text-[10px] font-black text-white uppercase tracking-widest">⚽ Cómo funciona</p>
+        <div className="rounded-2xl overflow-hidden t-surface"
+            style={{ border: '1px solid rgba(201,162,74,0.18)', boxShadow: '0 2px 20px rgba(0,0,0,0.3)', animation: 'slideUp 0.6s ease-out 0.1s both' }}>
+          <div className="px-4 py-3" style={{ background: 'rgba(201,162,74,0.08)', borderBottom: '1px solid rgba(201,162,74,0.18)' }}>
+            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#C9A24A' }}>⚽ Cómo funciona</p>
           </div>
-          <div className="grid grid-cols-3 divide-x divide-gray-100">
+          <div className="grid grid-cols-3" style={{ borderTop: '1px solid rgba(201,162,74,0.10)' }}>
             {[
               { n: '01', icon: '📋', title: 'Pronosticá', desc: '72 partidos del Mundial' },
               { n: '02', icon: '⏳', title: 'Esperá',     desc: 'Los goles en 90 minutos' },
               { n: '03', icon: '🏆', title: 'Ganá',       desc: 'El que más puntos acumula' },
-            ].map(({ n, icon, title, desc }) => (
-              <div key={n} className="p-4 text-center">
-                <p className="text-[9px] font-black text-gray-300 tracking-widest mb-1">{n}</p>
+            ].map(({ n, icon, title, desc }, i) => (
+              <div key={n} className="p-4 text-center" style={{ borderRight: i < 2 ? '1px solid rgba(201,162,74,0.10)' : undefined }}>
+                <p className="text-[9px] font-black tracking-widest mb-1" style={{ color: 'rgba(201,162,74,0.4)' }}>{n}</p>
                 <p className="text-2xl mb-1">{icon}</p>
-                <p className="text-xs font-black text-[#001A4B]">{title}</p>
-                <p className="text-[10px] text-gray-400 leading-tight mt-0.5">{desc}</p>
+                <p className="text-xs font-black" style={{ color: '#F0EAD6' }}>{title}</p>
+                <p className="text-[10px] leading-tight mt-0.5" style={{ color: 'rgba(240,234,214,0.45)' }}>{desc}</p>
               </div>
             ))}
           </div>
-          <div className="px-4 py-3 border-t border-gray-50 bg-gray-50">
-            <p className="text-[11px] text-gray-500">
+          <div className="px-4 py-3" style={{ borderTop: '1px solid rgba(201,162,74,0.10)', background: 'rgba(201,162,74,0.03)' }}>
+            <p className="text-[11px]" style={{ color: 'rgba(240,234,214,0.45)' }}>
               Los resultados cuentan en los 90 minutos. No cuentan alargues ni penales.
             </p>
           </div>
         </div>
 
         {/* ── SISTEMA DE PUNTUACIÓN ───────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" style={{ animation: 'slideUp 0.6s ease-out 0.2s both' }}>
-          <div className="bg-[#001A4B] px-4 py-3">
-            <p className="text-[10px] font-black text-white uppercase tracking-widest">🎯 Sistema de Puntuación</p>
+        <div className="rounded-2xl overflow-hidden t-surface"
+            style={{ border: '1px solid rgba(201,162,74,0.18)', boxShadow: '0 2px 20px rgba(0,0,0,0.3)', animation: 'slideUp 0.6s ease-out 0.2s both' }}>
+          <div className="px-4 py-3" style={{ background: 'rgba(201,162,74,0.08)', borderBottom: '1px solid rgba(201,162,74,0.18)' }}>
+            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#C9A24A' }}>🎯 Sistema de Puntuación</p>
           </div>
-          <div className="divide-y divide-gray-50">
+          <div style={{ borderTop: '1px solid rgba(201,162,74,0.10)' }}>
             {SCORING_ROWS.map(({ color, pts, desc }, i) => (
               <div
                 key={color}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-25 transition-colors"
-                style={{ animationDelay: `${i * 0.05}s` }}
+                className="flex items-center gap-3 px-4 py-3 transition-colors"
+                style={{ borderBottom: i < SCORING_ROWS.length - 1 ? '1px solid rgba(201,162,74,0.08)' : undefined }}
               >
                 <span
-                  className={`text-xs font-bold px-2.5 py-1.5 rounded-full shrink-0 min-w-[52px] text-center ${POINT_COLORS[color]} glow-card`}
-                  style={{ borderWidth: '1.5px', borderColor: `rgba(16, 185, 129, 0.3)` }}
+                  className={`text-xs font-bold px-2.5 py-1.5 rounded-full shrink-0 min-w-[52px] text-center ${POINT_COLORS[color]}`}
                 >
                   {pts}
                 </span>
-                <p className="text-sm text-gray-600 leading-snug font-medium">{desc}</p>
+                <p className="text-sm leading-snug font-medium" style={{ color: 'rgba(240,234,214,0.75)' }}>{desc}</p>
               </div>
             ))}
           </div>
-          <p className="text-xs text-gray-400 italic px-4 py-3 border-t border-gray-50 bg-gray-50">
+          <p className="text-xs italic px-4 py-3" style={{ color: 'rgba(240,234,214,0.4)', borderTop: '1px solid rgba(201,162,74,0.10)', background: 'rgba(201,162,74,0.03)' }}>
             Regla clave: si no acertás el resultado global (quién ganó o si fue empate) → 0 puntos, sin importar los goles.
           </p>
         </div>
 
         {/* ── EJEMPLOS PRÁCTICOS ──────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" style={{ animation: 'slideUp 0.6s ease-out 0.3s both' }}>
-          <div className="bg-[#001A4B] px-4 py-3">
-            <p className="text-[10px] font-black text-white uppercase tracking-widest">📊 Ejemplos Prácticos</p>
+        <div className="rounded-2xl overflow-hidden t-surface"
+            style={{ border: '1px solid rgba(201,162,74,0.18)', boxShadow: '0 2px 20px rgba(0,0,0,0.3)', animation: 'slideUp 0.6s ease-out 0.3s both' }}>
+          <div className="px-4 py-3" style={{ background: 'rgba(201,162,74,0.08)', borderBottom: '1px solid rgba(201,162,74,0.18)' }}>
+            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#C9A24A' }}>📊 Ejemplos Prácticos</p>
           </div>
-          <div className="divide-y divide-gray-50">
+          <div style={{ borderTop: '1px solid rgba(201,162,74,0.10)' }}>
             {KEY_EXAMPLES.map((ex, i) => (
-              <div key={i} className="px-4 py-3.5">
+              <div key={i} className="px-4 py-3.5" style={{ borderBottom: i < KEY_EXAMPLES.length - 1 ? '1px solid rgba(201,162,74,0.08)' : undefined }}>
                 <div className="flex items-start justify-between gap-3 mb-1.5">
                   <div className="flex gap-5">
                     <div>
-                      <p className="text-[10px] text-gray-400 mb-0.5">Tu pronóstico</p>
-                      <p className="font-mono font-bold text-xs text-[#0042A5]">{ex.bet}</p>
+                      <p className="text-[10px] mb-0.5" style={{ color: 'rgba(240,234,214,0.4)' }}>Tu pronóstico</p>
+                      <p className="font-mono font-bold text-xs" style={{ color: '#C9A24A' }}>{ex.bet}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-gray-400 mb-0.5">Resultado real</p>
-                      <p className="font-mono font-bold text-xs text-[#001A4B]">{ex.result}</p>
+                      <p className="text-[10px] mb-0.5" style={{ color: 'rgba(240,234,214,0.4)' }}>Resultado real</p>
+                      <p className="font-mono font-bold text-xs" style={{ color: '#F0EAD6' }}>{ex.result}</p>
                     </div>
                   </div>
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${POINT_COLORS[ex.color]}`}>
                     {ex.pts}{ex.pts !== 1 ? ' pts' : ' pt'}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 leading-snug">{ex.note}</p>
+                <p className="text-xs leading-snug" style={{ color: 'rgba(240,234,214,0.5)' }}>{ex.note}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* ── CONDICIONES IMPORTANTES ─────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" style={{ animation: 'slideUp 0.6s ease-out 0.4s both' }}>
-          <div className="bg-[#001A4B] px-4 py-3">
-            <p className="text-[10px] font-black text-white uppercase tracking-widest">📌 Condiciones Importantes</p>
+        <div className="rounded-2xl overflow-hidden t-surface"
+            style={{ border: '1px solid rgba(201,162,74,0.18)', boxShadow: '0 2px 20px rgba(0,0,0,0.3)', animation: 'slideUp 0.6s ease-out 0.4s both' }}>
+          <div className="px-4 py-3" style={{ background: 'rgba(201,162,74,0.08)', borderBottom: '1px solid rgba(201,162,74,0.18)' }}>
+            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#C9A24A' }}>📌 Condiciones Importantes</p>
           </div>
-          <ul className="px-4 py-4 space-y-3">
+          <ul className="px-4 py-4 space-y-3" style={{ borderTop: '1px solid rgba(201,162,74,0.10)' }}>
             {CONDITIONS.map(({ icon, text }, i) => (
-              <li key={i} className="flex items-start gap-3 text-sm text-gray-600">
+              <li key={i} className="flex items-start gap-3 text-sm" style={{ color: 'rgba(240,234,214,0.7)' }}>
                 <span className="shrink-0 text-base leading-tight">{icon}</span>
                 <span className="leading-snug">{text}</span>
               </li>
@@ -805,21 +823,21 @@ export function Home() {
 
         {/* ── INVITAR A UN AMIGO (CTA principal) ──────────────── */}
         <div
-          className="rounded-2xl overflow-hidden shadow-lg glow-card"
+          className="rounded-2xl overflow-hidden hr-glow"
           style={{
-            background: 'linear-gradient(135deg, #001A4B 0%, #003087 50%, #0042A5 100%)',
-            animation: 'slideUp 0.6s ease-out 0.5s both, glow 4s ease-in-out 0.5s infinite',
-            boxShadow: '0 0 30px rgba(16, 185, 129, 0.2), 0 20px 40px rgba(0, 26, 75, 0.3)'
+            background: 'linear-gradient(135deg, #0A0B14 0%, #0E0F1F 100%)',
+            border: '1px solid rgba(201,162,74,0.28)',
+            animation: 'slideUp 0.6s ease-out 0.5s both',
           }}
         >
           <div className="px-5 pt-5 pb-3">
-            <p className="text-[10px] font-black text-[#FFDF00] uppercase tracking-widest mb-2">
+            <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: '#C9A24A' }}>
               💌 Invitá a tus amigos
             </p>
-            <h2 className="text-white font-black text-xl leading-tight">
+            <h2 className="font-black text-xl leading-tight" style={{ color: '#F0EAD6' }}>
               Mientras más jueguen,<br />más grande el premio 🏆
             </h2>
-            <p className="text-white/60 text-xs mt-2 leading-relaxed">
+            <p className="text-xs mt-2 leading-relaxed" style={{ color: 'rgba(240,234,214,0.55)' }}>
               Mandales el link a tus amigos por WhatsApp, SMS, email o cualquier app. Cuantos más entren, más se acumula el pozo.
             </p>
           </div>
@@ -848,9 +866,9 @@ export function Home() {
       <div
         className="fixed bottom-0 left-0 right-0 z-40 md:hidden"
         style={{
-          background: 'rgba(255,255,255,0.96)',
-          backdropFilter: 'blur(12px)',
-          borderTop: '1px solid rgba(0,0,0,0.08)',
+          background: 'rgba(6,7,14,0.97)',
+          backdropFilter: 'blur(16px)',
+          borderTop: '1px solid rgba(201,162,74,0.18)',
         }}
       >
         <div

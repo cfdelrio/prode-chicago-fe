@@ -69,14 +69,35 @@ export function Navbar() {
 
   return (
     <nav
-      className="text-white shadow-lg sticky top-0 z-40"
-      style={{ background: 'var(--theme-nav-bg)' }}
+      className="text-white sticky top-0 z-40"
+      style={{
+        background: 'var(--theme-nav-bg)',
+        borderBottom: '1px solid rgba(201,162,74,0.18)',
+        boxShadow: '0 1px 24px rgba(0,0,0,0.6)',
+      }}
     >
       <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 font-bold text-lg shrink-0">
-          <span style={{ color: 'var(--theme-secondary)' }}>⚽</span>
-          <span className="hidden sm:block text-sm font-semibold">PRODE High Rolling</span>
+        <Link to="/" className="flex items-center gap-2.5 font-black text-lg shrink-0">
+          <span
+            className="flex items-center justify-center text-base font-black rounded-lg"
+            style={{
+              background: 'linear-gradient(145deg, #C9A24A, #E5C980)',
+              color: '#06070E',
+              width: 28, height: 28,
+              fontSize: 14,
+              boxShadow: '0 2px 8px rgba(201,162,74,0.4)',
+            }}
+          >
+            ♦
+          </span>
+          <span
+            className="hidden sm:block text-sm font-black tracking-wider"
+            style={{ letterSpacing: '0.10em' }}
+          >
+            PRODE{' '}
+            <span style={{ color: 'var(--theme-secondary)' }}>HR</span>
+          </span>
         </Link>
 
         {/* Desktop links */}
@@ -95,17 +116,18 @@ export function Navbar() {
             <Link
               key={l.to}
               to={l.to}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/10"
+              className="px-3 py-1.5 text-sm font-medium transition-all hover:opacity-100"
               style={location.pathname === l.to
-                ? { background: 'rgba(255,255,255,0.18)', color: 'var(--theme-secondary)' }
-                : undefined}
+                ? { color: 'var(--theme-secondary)', opacity: 1, borderBottom: '2px solid var(--theme-secondary)', paddingBottom: 4 }
+                : { opacity: 0.65 }}
             >
               {l.label}
             </Link>
           ))}
           <button
             onClick={() => setShowGanadores(true)}
-            className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/10"
+            className="px-3 py-1.5 text-sm font-medium transition-all hover:opacity-100"
+            style={{ opacity: 0.65 }}
           >
             🏆 {t.nav.winners}
           </button>
@@ -113,10 +135,10 @@ export function Navbar() {
             <Link
               key={l.to}
               to={l.to}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/10"
+              className="px-3 py-1.5 text-sm font-medium transition-all hover:opacity-100"
               style={location.pathname === l.to
-                ? { background: 'rgba(255,255,255,0.18)', color: 'var(--theme-secondary)' }
-                : undefined}
+                ? { color: 'var(--theme-secondary)', opacity: 1, borderBottom: '2px solid var(--theme-secondary)', paddingBottom: 4 }
+                : { opacity: 0.65 }}
             >
               {l.label}
             </Link>
@@ -124,10 +146,10 @@ export function Navbar() {
           {isAdmin() && (
             <Link
               to="/admin"
-              className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/10"
+              className="px-3 py-1.5 text-sm font-medium transition-all hover:opacity-100"
               style={location.pathname.startsWith('/admin')
-                ? { background: 'rgba(255,255,255,0.18)', color: 'var(--theme-secondary)' }
-                : undefined}
+                ? { color: 'var(--theme-secondary)', opacity: 1, borderBottom: '2px solid var(--theme-secondary)', paddingBottom: 4 }
+                : { opacity: 0.65 }}
             >
               {t.nav.admin}
             </Link>
@@ -162,7 +184,7 @@ export function Navbar() {
 
           <Link to="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             {user.foto_url
-              ? <img src={user.foto_url} alt="" className="w-8 h-8 rounded-full object-cover border-2 border-white/30" />
+              ? <img src={user.foto_url} alt="" className="w-8 h-8 rounded-full object-cover" style={{ border: '2px solid rgba(201,162,74,0.5)' }} />
               : <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
                   style={{ background: 'var(--theme-primary)', color: 'var(--theme-on-primary)' }}
@@ -241,17 +263,22 @@ export function Navbar() {
 
       {/* Mobile bottom tab bar — compacto, fuera del <nav> sticky */}
       <div
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-gray-200 flex"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex backdrop-blur-md"
+        style={{
+          background: 'rgba(6,7,14,0.96)',
+          borderTop: '1px solid rgba(201,162,74,0.18)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.5)',
+        }}
       >
         {[...navLinks.filter(l => !l.external), ...(isAdmin() ? adminLinks : [])].map((l) => (
           <Link
             key={l.to}
             to={l.to}
-            className="flex-1 flex flex-col items-center justify-center py-1.5 gap-0.5 transition-colors"
+            className="flex-1 flex flex-col items-center justify-center py-1.5 gap-0.5 transition-all"
             style={location.pathname === l.to
-              ? { color: 'var(--theme-primary)' }
-              : { color: '#9ca3af' }}
+              ? { color: '#C9A24A' }
+              : { color: 'rgba(240,234,214,0.38)' }}
           >
             <span className="text-base leading-none">{l.icon}</span>
             <span className="text-[9px] font-medium leading-none">{l.label}</span>

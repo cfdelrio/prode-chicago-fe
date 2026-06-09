@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { LazyQR } from '@/components/ui/LazyQR'
 import { useAuthStore } from '@/store/authStore'
 import { MatchCard } from '@/components/match/MatchCard'
 import type { Match, Bet, Planilla, RankingEntry } from '@/types'

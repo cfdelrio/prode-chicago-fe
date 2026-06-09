@@ -80,7 +80,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_API_URL: https://t49euho172.execute-api.us-east-1.amazonaws.com/prod/api
+          VITE_API_URL: https://api.hr.prodecaballito.com/prod/api
 
       - name: Deploy to S3
         run: |

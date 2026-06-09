@@ -19,7 +19,7 @@ export const AUTH_VIRTUAL = path.join(import.meta.dirname, '.auth/virtual.json')
 
 const API_BASE =
   process.env.API_BASE?.trim() ||
-  'https://t49euho172.execute-api.us-east-1.amazonaws.com/prod/api'
+  'https://v4t5toxvg6.execute-api.us-east-1.amazonaws.com/prod/api'
 
 const API_TIMEOUT = 10_000
 

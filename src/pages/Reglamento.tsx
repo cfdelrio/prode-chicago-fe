@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { POINT_COLORS } from '@/utils/scoring'
 import { Link } from 'react-router-dom'
-import { LazyQR } from '@/components/ui/LazyQR'
 import { useAuthStore } from '@/store/authStore'
 import { InviteFriendCTA } from '@/components/InviteFriendCTA'
 import { ComunidadCard } from '@/components/ComunidadCard'
@@ -58,7 +57,7 @@ const examples = [
   },
 ]
 
-export function Reglamento({ showHomePromo = false }: { showHomePromo?: boolean } = {}) {
+export function Reglamento() {
   const { token } = useAuthStore()
   const [totalUsers, setTotalUsers] = useState<number | null>(null)
 

@@ -1,0 +1,107 @@
+name: Deploy to S3 + CloudFront (HR)
+
+on:
+  push:
+    branches: [main-hr]
+  pull_request:
+    branches: [main-hr]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Coverage report
+        uses: davelosert/vitest-coverage-report-action@v2
+        if: always()
+        with:
+          json-summary-path: coverage/coverage-summary.json
+          json-final-path: coverage/coverage-final.json
+
+      - name: Extract coverage percentage
+        id: coverage
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main-hr'
+        run: |
+          PCT=$(node -e "const s=require('./coverage/coverage-summary.json'); console.log(Math.round(s.total.statements.pct) + '%')")
+          echo "coverage=$PCT" >> $GITHUB_OUTPUT
+
+      - name: Update coverage badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main-hr'
+        continue-on-error: true
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: 6eb515266a2c723d42eec2d6d5292979
+          filename: prode-hr-fe-coverage.json
+          label: coverage
+          message: ${{ steps.coverage.outputs.coverage }}
+          valColorRange: ${{ steps.coverage.outputs.coverage }}
+          maxColorRange: 100
+          minColorRange: 0
+
+  deploy:
+    needs: test
+    # Deployar en push a main-hr o workflow_dispatch manual (no en PRs)
+    if: github.ref == 'refs/heads/main-hr' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
+      - name: Deploy to S3
+        run: |
+          aws s3 sync dist/ s3://prode-chicago-fe/ \
+            --delete \
+            --cache-control "public,max-age=31536000,immutable" \
+            --exclude "index.html"
+
+          aws s3 cp dist/index.html s3://prode-chicago-fe/index.html \
+            --cache-control "no-cache,no-store,must-revalidate"
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION:    us-east-1
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id E34JCLRF41MJ03 \
+            --paths "/*"
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION:    us-east-1

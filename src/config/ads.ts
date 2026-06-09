@@ -24,12 +24,12 @@ const CHICAGO_URL = 'https://canuevachicago.com.ar'
 
 export const ADS: Ad[] = [
   {
-    id: 'nueva-chicago-torito',
+    id: 'high-rolling-torito',
     logoEmoji: '⚽',
     logoText: 'NUEVA CHICAGO',
     logoUrl: CHICAGO_LOGO,
     headline: 'El Torito de Mataderos',
-    subline: 'Club Atlético Nueva Chicago — ¡Arriba los verdinegros!',
+    subline: 'Club Atlético High Rolling — ¡Arriba los verdinegros!',
     ctaText: 'CONOCÉ EL CLUB →',
     ctaUrl: CHICAGO_URL,
     bg: 'linear-gradient(100deg, #071A07 0%, #005C28 55%, #0A1A0A 100%)',
@@ -39,7 +39,7 @@ export const ADS: Ad[] = [
     dimColor: 'rgba(255,255,255,0.5)',
   },
   {
-    id: 'nueva-chicago-socios',
+    id: 'high-rolling-socios',
     logoEmoji: '🏟️',
     logoText: 'NUEVA CHICAGO',
     logoUrl: CHICAGO_LOGO,
@@ -54,12 +54,12 @@ export const ADS: Ad[] = [
     dimColor: 'rgba(255,255,255,0.5)',
   },
   {
-    id: 'nueva-chicago-caballito',
+    id: 'high-rolling-caballito',
     logoEmoji: '💚',
     logoText: 'NUEVA CHICAGO',
     logoUrl: CHICAGO_LOGO,
     headline: '100 años en el barrio',
-    subline: 'Nueva Chicago, el club que nos representa a todos en Caballito',
+    subline: 'High Rolling, el club que nos representa a todos en Caballito',
     ctaText: 'VER FIXTURE →',
     ctaUrl: CHICAGO_URL,
     bg: 'linear-gradient(100deg, #0A0A0A 0%, #004020 50%, #1A3A1A 100%)',

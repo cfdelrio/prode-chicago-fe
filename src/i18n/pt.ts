@@ -22,7 +22,7 @@ export const pt: T = {
     contextPending: (n: number) => n === 1 ? '⚠️ Falta 1 prognóstico — não fiques de fora' : `⚠️ Faltam ${n} prognósticos para completar`,
     contextDefault: (pos: number) => `Estás na posição #${pos} — ¡a somar mais pontos!`,
     contextNoRanking: '¡Bem-vindo! Começa a apostar para aparecer na classificação.',
-    subtitle: 'PRODE Caballito',
+    subtitle: 'PRODE High Rolling',
     installApp: 'Adicionar atalho',
     iosInstallDesc: 'Siga estes passos para instalar o Prode Caballito na sua tela inicial:',
     iosStep1Title: 'Toque no botão Compartilhar',
@@ -112,7 +112,7 @@ export const pt: T = {
     fullPlanilla: 'Ver planilha completa', share: '↗ Compartilhar', copied: '✓ Copiado',
     you: '(você)', noOfficial: 'NÃO PAGA', extraBonus: '+Bônus',
     partial: 'Parciais', tendency: 'Tendência',
-    shareText: (n: string, p: number, pts: number) => `${n} está #${p} no PRODE Caballito com ${pts} pontos 🏆`,
+    shareText: (n: string, p: number, pts: number) => `${n} está #${p} no PRODE High Rolling com ${pts} pontos 🏆`,
     shareMyText: (p: number, pts: number) => p === 1
       ? `Sou o líder do PRODE do Mundial 2026! 🥇 ${pts}pts e contando. Alguém me supera?\n👉 prodecaballito.com/ranking`
       : `Estou #${p} no PRODE do Mundial 2026 com ${pts}pts ⚽\nConsegues me superar? Entra grátis 👉 prodecaballito.com`,
@@ -186,7 +186,7 @@ export const pt: T = {
     noBets: 'Sem prognósticos carregados',
     share: '↗ Compartilhar',
     shareText: (home: string, away: string, rL: number, rV: number, exact: number, total: number) =>
-      `⚽ ${home} ${rL}-${rV} ${away}\n🎯 ${exact === 0 ? 'Ninguém acertou' : exact === 1 ? 'Só 1 de ' + total + ' acertou' : exact + ' de ' + total + ' acertaram'} o resultado exato no PRODE Caballito 2026\n\n🏆 Você estava entre os que previram certo? 👉 prodecaballito.com/ranking`,
+      `⚽ ${home} ${rL}-${rV} ${away}\n🎯 ${exact === 0 ? 'Ninguém acertou' : exact === 1 ? 'Só 1 de ' + total + ' acertou' : exact + ' de ' + total + ' acertaram'} o resultado exato no PRODE High Rolling 2026\n\n🏆 Você estava entre os que previram certo? 👉 prodecaballito.com/ranking`,
     copied: '✓ Copiado',
     seeAll: 'Ver todos',
     seeLess: 'Ver menos',

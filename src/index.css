@@ -389,3 +389,17 @@ a { text-decoration: none; color: inherit; }
   background-color: rgba(255,255,255,0.06);
   border-color: rgba(201,162,74,0.25);
 }
+
+/* ── Light auth cards (Recuperar contraseña / Register) ─────────────
+   Estas pantallas muestran una tarjeta BLANCA aunque el tema activo sea
+   oscuro, así que los inputs heredarían texto crema (#F0EAD6) ilegible.
+   Forzamos texto oscuro sobre blanco solo dentro de la tarjeta.
+   !important para ganarle a la regla global de inputs de arriba.       */
+.auth-card-light input,
+.auth-card-light select,
+.auth-card-light textarea {
+  color: #111827 !important;
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+.auth-card-light input::placeholder { color: #9ca3af !important; }

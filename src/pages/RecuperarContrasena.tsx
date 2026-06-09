@@ -56,7 +56,7 @@ export function RecuperarContrasena() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#001A4B] to-[#0042A5] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+      <div className="auth-card-light bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         <div className="bg-gradient-to-r from-[#001A4B] to-[#0042A5] px-8 py-6 text-center">
           <div className="text-4xl mb-2">⚽</div>
           <h1 className="text-white font-bold text-2xl">PRODE High Rolling</h1>

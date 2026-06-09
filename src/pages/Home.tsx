@@ -324,9 +324,9 @@ function HomeSkeleton() {
 
 function buildInviteMessage(inviterName?: string): string {
   if (inviterName) {
-    return `⚽ ¡Te invito al PRODE del Mundial 2026!\n\nSoy ${inviterName} y te quiero desafiar. Armá tus resultados, sumá puntos y jugá contra todos en el ranking.\n\n🎫 1 boleta $20.000\n\nEntrá acá:\nhttps://chicago.prodecaballito.com`
+    return `⚽ ¡Te invito al PRODE del Mundial 2026!\n\nSoy ${inviterName} y te quiero desafiar. Armá tus resultados, sumá puntos y jugá contra todos en el ranking.\n\n🎫 1 boleta $20.000\n\nEntrá acá:\nhttps://hr.prodecaballito.com`
   }
-  return `⚽ ¡Sumate al PRODE del Mundial 2026!\n\nArmá tus resultados, competí en el ranking y jugá contra todos.\n\n🎫 1 boleta $20.000\n\nEntrá acá:\nhttps://chicago.prodecaballito.com`
+  return `⚽ ¡Sumate al PRODE del Mundial 2026!\n\nArmá tus resultados, competí en el ranking y jugá contra todos.\n\n🎫 1 boleta $20.000\n\nEntrá acá:\nhttps://hr.prodecaballito.com`
 }
 
 const SCORING_ROWS = [
@@ -853,7 +853,7 @@ export function Home() {
           </div>
           <div className="p-5 flex flex-col items-center text-center gap-3">
             <p className="text-sm text-gray-700 font-semibold">
-              Sumate al canal <strong>Prode Nueva Chicago</strong> para enterarte de novedades y resultados.
+              Sumate al canal <strong>Prode High Rolling</strong> para enterarte de novedades y resultados.
             </p>
             <div className="p-3 bg-white rounded-xl border border-gray-100">
               <LazyQR

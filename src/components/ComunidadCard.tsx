@@ -106,7 +106,7 @@ export function ComunidadCard({ count }: Props) {
           <div className="flex flex-wrap items-center gap-2 pt-0.5">
             <Link
               to="/register"
-              aria-label="Sumate ahora a Prode Nueva Chicago — registrate gratis"
+              aria-label="Sumate ahora a Prode High Rolling — registrate gratis"
               className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-green-500 to-green-600
                          px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-green-900/40
                          transition-colors hover:from-green-400 hover:to-green-500

@@ -147,7 +147,7 @@ export function Register() {
       }
 
       if (data.data?.token && data.data?.user) {
-        show('¡Bienvenido a Prode Nueva Chicago!', 'success')
+        show('¡Bienvenido a Prode High Rolling!', 'success')
         // Si el navegador soporta notificaciones y aún no se respondió → paso notify
         if ('Notification' in window && Notification.permission === 'default') {
           setStep('notify')
@@ -383,7 +383,7 @@ export function Register() {
                       {notifStatus === 'requesting' ? 'Esperando permiso...' : 'Activar notificaciones'}
                     </Button>
                     <p className="text-xs text-gray-400 mt-3 text-center">
-                      Las notificaciones son obligatorias para usar Prode Nueva Chicago
+                      Las notificaciones son obligatorias para usar Prode High Rolling
                     </p>
                   </div>
 

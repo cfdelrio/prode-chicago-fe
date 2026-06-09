@@ -20,9 +20,9 @@ export const es = {
     contextPending: (n: number) => n === 1 ? '⚠️ Te falta 1 pronóstico — no te quedes afuera' : `⚠️ Te faltan ${n} pronósticos por completar`,
     contextDefault: (pos: number) => `Estás en el puesto #${pos} — ¡a sumar más puntos!`,
     contextNoRanking: '¡Bienvenido! Empezá a apostar para aparecer en el ranking.',
-    subtitle: 'PRODE Nueva Chicago',
+    subtitle: 'PRODE High Rolling',
     installApp: 'Agregar acceso directo',
-    iosInstallDesc: 'Seguí estos pasos para instalar Prode Nueva Chicago en tu pantalla de inicio:',
+    iosInstallDesc: 'Seguí estos pasos para instalar Prode High Rolling en tu pantalla de inicio:',
     iosStep1Title: 'Tocá el botón Compartir',
     iosStep1Desc: 'Es el ícono de cuadrado con flecha hacia arriba, en la barra inferior de Safari.',
     iosStep2Title: 'Elegí "Agregar a inicio"',
@@ -110,9 +110,9 @@ export const es = {
     fullPlanilla: 'Ver planilla completa', share: '↗ Compartir', copied: '✓ Copiado',
     you: '(vos)', noOfficial: 'IMPAGA', extraBonus: '+Bonus',
     partial: 'Parciales', tendency: 'Tendencia',
-    shareText: (n: string, p: number, pts: number) => `${n} está #${p} en el PRODE Nueva Chicago con ${pts} puntos 🏆`,
+    shareText: (n: string, p: number, pts: number) => `${n} está #${p} en el PRODE High Rolling con ${pts} puntos 🏆`,
     shareMyText: (p: number, pts: number) => p === 1
-      ? `¡Soy el líder del PRODE del Mundial 2026! 🥇 ${pts}pts y contando. ¿Alguien me derrota?\n👉 chicago.prodecaballito.com/ranking`
+      ? `¡Soy el líder del PRODE del Mundial 2026! 🥇 ${pts}pts y contando. ¿Alguien me derrota?\n👉 hr.prodecaballito.com/ranking`
       : `Voy #${p} en el PRODE del Mundial 2026 con ${pts}pts ⚽\n¿Me superás? Anotate gratis 👉 prodecaballito.com`,
     shareBtn: '📲 Compartir posición',
     position: 'posición',
@@ -180,7 +180,7 @@ export const es = {
     errorTheme: 'No pudimos guardar el tema. Se aplicará en el próximo inicio.',
   },
   onboarding: {
-    step1Title: '👋 ¡Bienvenido al Prode Nueva Chicago!',
+    step1Title: '👋 ¡Bienvenido al Prode High Rolling!',
     step1: 'Te muestro en pocos pasos cómo cargar tus pronósticos y competir con tus amigos.',
     step2Title: '📋 Tu planilla',
     step2: 'Acá elegís entre tus planillas. Si no tenés ninguna, creá una con el botón ➕ que está al lado.',
@@ -225,7 +225,7 @@ export const es = {
     noBets: 'Sin pronósticos cargados',
     share: '↗ Compartir',
     shareText: (home: string, away: string, rL: number, rV: number, exact: number, total: number) =>
-      `⚽ ${home} ${rL}-${rV} ${away}\n🎯 ${exact === 0 ? 'Nadie acertó' : exact === 1 ? 'Solo 1 de ' + total + ' acertó' : exact + ' de ' + total + ' acertaron'} el resultado exacto en PRODE Nueva Chicago 2026\n\n¿Estabas entre los que la vieron venir? 👉 chicago.prodecaballito.com/ranking`,
+      `⚽ ${home} ${rL}-${rV} ${away}\n🎯 ${exact === 0 ? 'Nadie acertó' : exact === 1 ? 'Solo 1 de ' + total + ' acertó' : exact + ' de ' + total + ' acertaron'} el resultado exacto en PRODE High Rolling 2026\n\n¿Estabas entre los que la vieron venir? 👉 hr.prodecaballito.com/ranking`,
     copied: '✓ Copiado',
     seeAll: 'Ver todos',
     seeLess: 'Ver menos',

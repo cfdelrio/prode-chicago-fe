@@ -18,9 +18,9 @@ if (typeof document !== 'undefined' && !document.getElementById('invite-cta-anim
 /* ── Mensaje de invitación ─────────────────────────────────── */
 export function buildInviteMessage(inviterName?: string): string {
   if (inviterName) {
-    return `⚽ ¡Te invito al PRODE del Mundial 2026!\n\nSoy ${inviterName} y te quiero desafiar. Armá tus resultados, sumá puntos y jugá contra todos en el ranking.\n\n🎫 1 boleta $20.000\n\nEntrá acá:\nhttps://hr.prodecaballito.com`
+    return `⚽ ¡Te invito al PRODE del Mundial 2026!\n\nSoy ${inviterName} y te quiero desafiar. Armá tus resultados, sumá puntos y jugá contra todos en el ranking.\n\n🎫 1 boleta US$ 30\n\nEntrá acá:\nhttps://hr.prodecaballito.com`
   }
-  return `⚽ ¡Sumate al PRODE del Mundial 2026!\n\nArmá tus resultados, competí en el ranking y jugá contra todos.\n\n🎫 1 boleta $20.000\n\nEntrá acá:\nhttps://hr.prodecaballito.com`
+  return `⚽ ¡Sumate al PRODE del Mundial 2026!\n\nArmá tus resultados, competí en el ranking y jugá contra todos.\n\n🎫 1 boleta US$ 30\n\nEntrá acá:\nhttps://hr.prodecaballito.com`
 }
 
 type Channel = 'whatsapp' | 'sms' | 'email' | 'copy' | 'native'

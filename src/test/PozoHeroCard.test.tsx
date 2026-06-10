@@ -29,29 +29,29 @@ const NOW = new Date('2026-06-04T12:00:00Z')
 
 describe('formatMoney', () => {
   it('formats 0 correctly', () => {
-    expect(formatMoney(0)).toBe('$0')
+    expect(formatMoney(0)).toBe('US$ 0')
   })
 
-  it('formats 20000 with Argentine thousand separator', () => {
-    const result = formatMoney(20_000)
-    expect(result).toMatch(/^\$/)
-    expect(result).toContain('20')
+  it('formats 30 correctly', () => {
+    const result = formatMoney(30)
+    expect(result).toMatch(/^US\$/)
+    expect(result).toContain('30')
   })
 
-  it('formats 360000 starting with $', () => {
-    expect(formatMoney(360_000)).toMatch(/^\$/)
+  it('formats 1080 with US$ prefix (30 × 36 jugadores)', () => {
+    expect(formatMoney(1080)).toMatch(/^US\$/)
   })
 
-  it('formats 840000 starting with $', () => {
-    expect(formatMoney(840_000)).toMatch(/^\$/)
+  it('formats 1260 with US$ prefix (30 × 42 jugadores)', () => {
+    expect(formatMoney(1260)).toMatch(/^US\$/)
   })
 })
 
 // ─── PRICE_PER_PLANILLA ───────────────────────────────────────────────────────
 
 describe('PRICE_PER_PLANILLA', () => {
-  it('is 20000', () => {
-    expect(PRICE_PER_PLANILLA).toBe(20_000)
+  it('is 30 USD', () => {
+    expect(PRICE_PER_PLANILLA).toBe(30)
   })
 })
 
@@ -204,16 +204,16 @@ describe('PozoHeroCard', () => {
     render(<PozoHeroCard ranking={ranking} now={NOW} />)
     const label = screen.getByLabelText(/Recaudado:/i)
     expect(label).toBeInTheDocument()
-    // 1 paid * $20,000
-    expect(label.textContent).toMatch(/^\$/)
+    // 1 paid * US$ 30
+    expect(label.textContent).toMatch(/^US\$/)
   })
 
   it('shows formatted pozoTotal amount', () => {
     render(<PozoHeroCard ranking={ranking} now={NOW} />)
     const label = screen.getByLabelText(/Pozo potencial:/i)
     expect(label).toBeInTheDocument()
-    // 3 total * $20,000
-    expect(label.textContent).toMatch(/^\$/)
+    // 3 total * US$ 30
+    expect(label.textContent).toMatch(/^US\$/)
   })
 
   it('shows "si pagan los 3 anotados"', () => {

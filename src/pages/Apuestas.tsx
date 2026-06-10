@@ -205,8 +205,8 @@ export function Apuestas() {
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#001A4B]">{t.bets.title}</h1>
-        <span className="text-sm text-gray-400">{progress.done}/{progress.total} {t.bets.completed}</span>
+        <h1 className="text-xl font-bold t-text-page">{t.bets.title}</h1>
+        <span className="text-sm t-text-muted">{progress.done}/{progress.total} {t.bets.completed}</span>
       </div>
 
       {/* Invitar amigo — CTA compacto */}
@@ -310,8 +310,8 @@ export function Apuestas() {
             disabled={!allDone}
             className={`w-full font-bold py-3 rounded-xl text-sm transition-colors border-2 ${
               allDone
-                ? 'border-[#0042A5] text-[#0042A5] hover:bg-[#0042A5] hover:text-white cursor-pointer'
-                : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed'
+                ? 't-btn-outline-accent cursor-pointer'
+                : 't-border-page t-text-muted t-surface cursor-not-allowed'
             }`}
           >
             {allDone ? `🔒 ${t.bets.confirmPlanilla}` : `⏳ ${t.bets.missingBets(missing)}`}

@@ -346,6 +346,26 @@
 .t-text-page    { color: var(--theme-page-text); }
 .t-text-muted   { color: var(--theme-page-text-muted); }
 
+/* Botón outline apoyado sobre el fondo de página — accent adaptativo.
+   En hover invierte: fondo accent + texto del color del fondo de página. */
+.t-btn-outline-accent {
+  border-color: var(--theme-page-accent, var(--theme-primary));
+  color: var(--theme-page-accent, var(--theme-primary));
+}
+.t-btn-outline-accent:hover {
+  background-color: var(--theme-page-accent, var(--theme-primary));
+  color: var(--theme-page-bg, #ffffff);
+}
+
+/* ⚠️ REGLA DE CONTRASTE — elementos apoyados DIRECTO sobre el fondo de
+   página (títulos h1, subtítulos, botones outline) NUNCA deben hardcodear
+   color de texto (text-[#001A4B], t-text-nav, etc.): el fondo cambia por
+   tema (near-black en neutral/HR, claro en river/racing/etc.) y el texto
+   queda invisible. Usar siempre los tokens adaptativos:
+     .t-text-page / .t-text-muted / .t-text-page-accent / .t-btn-outline-accent
+   Colores hardcodeados solo DENTRO de superficies con fondo propio
+   explícito (cards bg-white, modales, gradientes propios).             */
+
 /* ── BASE ───────────────────────────────────────────────────────── */
 
 body {

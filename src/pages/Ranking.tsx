@@ -165,7 +165,7 @@ export function Ranking() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
-      <h1 className="text-xl font-bold t-text-nav">{t.ranking.title}</h1>
+      <h1 className="text-xl font-bold t-text-page">{t.ranking.title}</h1>
 
       {/* Favoritos */}
       <div className="flex items-center gap-2 flex-wrap">

@@ -11,11 +11,11 @@ if (typeof document !== 'undefined' && !document.getElementById('pozo-anim')) {
 }
 
 /* ── Constants ───────────────────────────────────────────────────── */
-export const PRICE_PER_PLANILLA = 20_000
+export const PRICE_PER_PLANILLA = 30
 
 /* ── Helpers ─────────────────────────────────────────────────────── */
 export function formatMoney(n: number): string {
-  return '$' + n.toLocaleString('es-AR')
+  return 'US$ ' + n.toLocaleString('es-AR')
 }
 
 export function calcPozoStats(ranking: RankingEntry[]) {

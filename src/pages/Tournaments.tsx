@@ -110,7 +110,7 @@ export function Tournaments() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
-      <h1 className="text-xl font-bold text-[#001A4B]">{t.tournaments.title}</h1>
+      <h1 className="text-xl font-bold t-text-page">{t.tournaments.title}</h1>
 
       {/* Selector de torneo */}
       {tournaments.length > 1 && (

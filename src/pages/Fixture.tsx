@@ -161,9 +161,9 @@ export function Fixture() {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xl">🗓️</span>
-            <h1 className="text-base font-bold t-text-nav">{tf.title}</h1>
+            <h1 className="text-base font-bold t-text-page">{tf.title}</h1>
           </div>
-          <p className="text-xs font-semibold ml-8 mt-0.5" style={{ color: 'var(--theme-primary)' }}>
+          <p className="text-xs font-semibold ml-8 mt-0.5 t-text-page-accent">
             {tf.subtitle}
           </p>
         </div>

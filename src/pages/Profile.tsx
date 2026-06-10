@@ -156,7 +156,7 @@ export function Profile() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-      <h1 className="text-xl font-bold text-[#001A4B]">{t.profile.title}</h1>
+      <h1 className="text-xl font-bold t-text-page">{t.profile.title}</h1>
 
       {/* Foto y nombre */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">

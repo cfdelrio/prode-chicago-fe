@@ -301,7 +301,7 @@ export function Matriz() {
       <div className="max-w-7xl mx-auto px-2 flex items-start justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-[#001A4B]">{t.matrix.title}</h1>
+            <h1 className="text-xl font-bold t-text-page">{t.matrix.title}</h1>
             {hasLiveMatch && (
               <span
                 className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-red-600"
@@ -313,7 +313,7 @@ export function Matriz() {
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs t-text-muted mt-1">
             {t.matrix.players(rows.length)} · {t.matrix.matches(allMatches.length)}
           </p>
         </div>
@@ -347,12 +347,12 @@ export function Matriz() {
           {filterColors.size > 0 && (
             <button
               onClick={() => setFilterColors(new Set())}
-              className="text-gray-400 hover:text-gray-600 font-medium ml-1"
+              className="t-text-muted hover:opacity-75 font-medium ml-1"
             >
               ✕ limpiar
             </button>
           )}
-          {filterColors.size === 0 && <span className="text-gray-400 ml-1">{t.matrix.legend}</span>}
+          {filterColors.size === 0 && <span className="t-text-muted ml-1">{t.matrix.legend}</span>}
         </div>
       )}
 

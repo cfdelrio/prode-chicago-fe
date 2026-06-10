@@ -152,9 +152,9 @@ export function Planilla() {
               </div>
           }
         </button>
-        {ownerName && <p className="text-sm font-semibold text-[#001A4B]">{ownerName}</p>}
+        {ownerName && <p className="text-sm font-semibold t-text-page">{ownerName}</p>}
         <div className="text-center">
-          <h1 className="text-xl font-bold text-[#001A4B] truncate max-w-xs">{planilla.nombre_planilla}</h1>
+          <h1 className="text-xl font-bold t-text-page truncate max-w-xs">{planilla.nombre_planilla}</h1>
           <div className="flex justify-center gap-2 mt-0.5 flex-wrap">
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${planilla.precio_pagado ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-600'}`}>
               {planilla.precio_pagado ? t.planilla.paid : 'IMPAGO'}

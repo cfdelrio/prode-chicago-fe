@@ -39,7 +39,7 @@ describe('buildInviteMessage', () => {
 
   it('incluye el precio de la boleta', () => {
     const msg = buildInviteMessage()
-    expect(msg).toContain('$20.000')
+    expect(msg).toContain('US$ 30')
   })
 })
 

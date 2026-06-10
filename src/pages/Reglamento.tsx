@@ -106,7 +106,7 @@ export function Reglamento() {
         </div>
         <div className="p-4 text-center">
           <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">1 boleta</p>
-          <p className="text-2xl font-black text-[#001A4B] leading-none">$20.000</p>
+          <p className="text-2xl font-black text-[#001A4B] leading-none">US$ 30</p>
           <p className="text-[10px] text-gray-500 mt-1.5">Una planilla del Mundial</p>
         </div>
       </div>
@@ -167,7 +167,7 @@ export function Reglamento() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
         <h2 className="font-bold text-[#001A4B] text-base">Participación</h2>
         <ul className="space-y-2 text-sm text-gray-600">
-          <li className="flex items-start gap-2"><span className="shrink-0">🎫</span><span>Cada planilla tiene un valor de <strong>$20.000</strong>.</span></li>
+          <li className="flex items-start gap-2"><span className="shrink-0">🎫</span><span>Cada planilla tiene un valor de <strong>US$ 30</strong>.</span></li>
           <li className="flex items-start gap-2"><span className="shrink-0">📋</span><span>Podés participar con <strong>la cantidad de planillas que quieras</strong>, cada una compite por separado.</span></li>
           <li className="flex items-start gap-2"><span className="shrink-0">💰</span><span>El total acumulado va para <strong>un único ganador</strong> (el que sume más puntos).</span></li>
           <li className="flex items-start gap-2"><span className="shrink-0">🔒</span><span>El cierre de pronósticos es <strong>5 minutos antes del inicio del primer partido</strong>. A partir de ese momento no se pueden agregar planillas nuevas ni modificar pronósticos.</span></li>

@@ -178,6 +178,7 @@ export function Matriz() {
       if (w > 0) {
         headerJugadorRef.current.style.minWidth = `${w}px`
         headerJugadorRef.current.style.width = `${w}px`
+        document.documentElement.style.setProperty('--jugador-width', `${w}px`)
       }
     }
     sync()
@@ -296,6 +297,12 @@ export function Matriz() {
           0%   { background-position: -200% center; }
           100% { background-position: 200% center; }
         }
+
+        th.sticky-pts, td.sticky-pts {
+          position: sticky;
+          left: var(--jugador-width, 140px);
+          z-index: 5;
+        }
       `}</style>
 
       <div className="max-w-7xl mx-auto px-2 flex items-start justify-between flex-wrap gap-3">
@@ -377,7 +384,7 @@ export function Matriz() {
                   <th ref={headerJugadorRef} className="sticky left-0 bg-[#001A4B] px-2 py-2 text-left font-semibold z-30 min-w-[140px] sm:min-w-[180px]">
                     {t.ranking.player}
                   </th>
-                  <th className="px-2 py-2 text-center font-semibold w-14 bg-[#001A4B]">{t.ranking.pts}</th>
+                  <th className="sticky-pts px-2 py-2 text-center font-semibold w-14 bg-[#001A4B]">{t.ranking.pts}</th>
                   {allMatches.map((m) => (
                     <th
                       key={m.id}
@@ -489,7 +496,7 @@ export function Matriz() {
                         )}
                       </div>
                     </td>
-                    <td className="px-2 py-1.5 text-center font-black text-[#0042A5]">{pts}</td>
+                    <td className={`sticky-pts px-2 py-1.5 text-center font-black text-[#0042A5] ${rowBg}`}>{pts}</td>
                     {allMatches.map((m) => {
                       const b = playerBets[m.id]
                       const isCutoffPassed = new Date() > new Date(m.time_cutoff)

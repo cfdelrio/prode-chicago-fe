@@ -178,6 +178,7 @@ export function Matriz() {
       if (w > 0) {
         headerJugadorRef.current.style.minWidth = `${w}px`
         headerJugadorRef.current.style.width = `${w}px`
+        document.documentElement.style.setProperty('--jugador-width', `${w}px`)
       }
     }
     sync()
@@ -295,6 +296,12 @@ export function Matriz() {
         @keyframes shimmer {
           0%   { background-position: -200% center; }
           100% { background-position: 200% center; }
+        }
+
+        td.sticky-pts {
+          position: sticky;
+          left: var(--jugador-width, 140px);
+          z-index: 5;
         }
       `}</style>
 
@@ -489,7 +496,7 @@ export function Matriz() {
                         )}
                       </div>
                     </td>
-                    <td className="px-2 py-1.5 text-center font-black text-[#0042A5]">{pts}</td>
+                    <td className={`sticky-pts px-2 py-1.5 text-center font-black text-[#0042A5] ${rowBg}`}>{pts}</td>
                     {allMatches.map((m) => {
                       const b = playerBets[m.id]
                       const isCutoffPassed = new Date() > new Date(m.time_cutoff)

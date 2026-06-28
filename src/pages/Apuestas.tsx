@@ -36,7 +36,7 @@ function ApuestasSkeleton() {
     </div>
   )
 }
-import type { Match, Bet, Planilla } from '@/types'
+import type { Match, Bet, Planilla, Tournament } from '@/types'
 
 export function Apuestas() {
   const { show } = useToastStore()
@@ -54,8 +54,18 @@ export function Apuestas() {
   const [now, setNow] = useState(Date.now())
   const [showHelp, setShowHelp] = useState(true)
   const [runTour, setRunTour] = useState(false)
-  const hasLive = matches.some(m => m.estado === 'live')
-  const isTournamentClosed = matches.length > 0 && now > Math.min(...matches.map(m => new Date(m.time_cutoff).getTime()))
+  const [tournaments, setTournaments] = useState<Tournament[]>([])
+  const [newPlanillaTournamentId, setNewPlanillaTournamentId] = useState<string>('')
+
+  const selectedPlanillaObj = planillas.find(p => p.id === selectedPlanilla)
+  const currentTournamentId = selectedPlanillaObj?.tournament_ids?.[0] ?? null
+  const scopedMatches = currentTournamentId ? matches.filter(m => m.tournament_id === currentTournamentId) : matches
+  const newScopedMatches = newPlanillaTournamentId ? matches.filter(m => m.tournament_id === newPlanillaTournamentId) : matches
+
+  const isTournamentClosed = scopedMatches.length > 0 && now > Math.min(...scopedMatches.map(m => new Date(m.time_cutoff).getTime()))
+  const isNewTournamentClosed = newScopedMatches.length > 0 && now > Math.min(...newScopedMatches.map(m => new Date(m.time_cutoff).getTime()))
+
+  const hasLive = scopedMatches.some(m => m.estado === 'live')
 
   useEffect(() => {
     loadInitial()
@@ -96,15 +106,21 @@ export function Apuestas() {
   const loadInitial = async () => {
     setLoading(true)
     try {
-      const [matchRes, planRes] = await Promise.all([
+      const [matchRes, planRes, tourRes] = await Promise.all([
         api.get('/matches?limit=200'),
         api.get('/planillas'),
+        api.get('/tournaments'),
       ])
       setMatches(matchRes.data.data.matches)
       const pl: Planilla[] = planRes.data.data
       setPlanillas(pl)
       if (pl.length > 0) {
         setSelectedPlanilla(pl[0].id)
+      }
+      const tours: Tournament[] = tourRes.data.data || []
+      setTournaments(tours)
+      if (tours.length > 0) {
+        setNewPlanillaTournamentId(tours[tours.length - 1].id)
       }
     } catch {
       show(t.bets.errorLoadMatches, 'error')
@@ -125,14 +141,14 @@ export function Apuestas() {
   }
 
   const handleCreatePlanilla = async () => {
-    if (isTournamentClosed) {
+    if (isNewTournamentClosed) {
       show(t.bets.tournamentClosed, 'error')
       setShowNewPlanilla(false)
       return
     }
     setCreatingPlanilla(true)
     try {
-      const { data } = await api.post('/planillas')
+      const { data } = await api.post('/planillas', newPlanillaTournamentId ? { tournament_id: newPlanillaTournamentId } : {})
       const created: Planilla = data.data
       setPlanillas(prev => [...prev, created])
       setSelectedPlanilla(created.id)
@@ -163,13 +179,13 @@ export function Apuestas() {
 
   // Live matches (pinned at top)
   const liveMatches = useMemo(
-    () => matches.filter(m => m.estado === 'live'),
-    [matches]
+    () => (currentTournamentId ? matches.filter(m => m.tournament_id === currentTournamentId) : matches).filter(m => m.estado === 'live'),
+    [matches, currentTournamentId]
   )
 
-  const pendingMatches = matches.filter(m => m.estado !== 'finished')
+  const pendingMatches = scopedMatches.filter(m => m.estado !== 'finished')
 
-  const filtered = matches
+  const filtered = scopedMatches
     .filter((m) => {
       if (search) {
         const q = search.toLowerCase()
@@ -193,11 +209,9 @@ export function Apuestas() {
     })
 
   const progress = {
-    done: Object.keys(bets).filter(mid => matches.find(m => m.id === mid)).length,
+    done: Object.keys(bets).filter(mid => scopedMatches.find(m => m.id === mid)).length,
     total: pendingMatches.length,
   }
-
-  const selectedPlanillaObj = planillas.find(p => p.id === selectedPlanilla)
 
   if (loading) return <ApuestasSkeleton />
 
@@ -255,7 +269,7 @@ export function Apuestas() {
             {t.bets.noPlanillas}
           </div>
         )}
-        {!isTournamentClosed && (
+        {!isNewTournamentClosed && (
           <button
             onClick={() => setShowNewPlanilla(true)}
             data-tour="new-planilla"
@@ -278,9 +292,27 @@ export function Apuestas() {
               <div className="w-10 h-1 rounded-full bg-gray-200" />
             </div>
             <h3 className="font-bold t-text-nav text-base mb-1">{t.bets.newPlanilla}</h3>
-            <p className="text-xs text-gray-400 mb-4">
+            <p className="text-xs text-gray-400 mb-3">
               {t.bets.planillaIndependent}
             </p>
+            {tournaments.length > 1 && (
+              <div className="mb-4 space-y-2">
+                <p className="text-xs font-semibold t-text-nav">{t.bets.selectTournament}</p>
+                {tournaments.map(tour => (
+                  <label key={tour.id} className="flex items-center gap-3 cursor-pointer p-2.5 rounded-xl border border-gray-200 hover:border-[#0042A5] transition-colors">
+                    <input
+                      type="radio"
+                      name="tournament"
+                      value={tour.id}
+                      checked={newPlanillaTournamentId === tour.id}
+                      onChange={() => setNewPlanillaTournamentId(tour.id)}
+                      className="accent-[#0042A5]"
+                    />
+                    <span className="text-sm font-medium t-text-nav">{tour.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
             <div className="flex gap-3">
               <button
                 onClick={() => setShowNewPlanilla(false)}
@@ -327,7 +359,7 @@ export function Apuestas() {
             <h3 className="font-bold text-lg text-gray-900 mb-1">🔒 {t.bets.confirmPlanillaTitle}</h3>
             <p className="text-sm text-gray-500 mb-4">{t.bets.confirmPlanillaDesc}</p>
             <div className="overflow-y-auto flex-1 space-y-1 mb-4">
-              {matches.filter(m => bets[m.id]).map(m => (
+              {scopedMatches.filter(m => bets[m.id]).map(m => (
                 <div key={m.id} className="flex justify-between items-center text-sm py-2 border-b border-gray-100">
                   <span className="text-gray-700 truncate mr-2">
                     {teamFlag(m.home_team)} {m.home_team} vs {m.away_team} {teamFlag(m.away_team)}

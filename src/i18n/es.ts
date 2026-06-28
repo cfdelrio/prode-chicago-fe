@@ -98,6 +98,7 @@ export const es = {
     planillaLocked: 'Planilla cerrada ✓',
     errorLock: 'Error al cerrar planilla',
     tournamentClosed: 'El torneo ya cerró. No es posible crear nuevas planillas.',
+    selectTournament: 'Elegí la fase',
   },
   ranking: {
     title: '🏆 Ranking', global: 'Global', player: 'Jugador',

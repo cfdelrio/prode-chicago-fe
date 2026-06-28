@@ -162,6 +162,14 @@ export function Matriz() {
   const [togglingFav, setTogglingFav] = useState<string | null>(null)
   const [showVedaModal, setShowVedaModal] = useState(false)
   const [avatarFullscreen, setAvatarFullscreen] = useState<{ avatar: string; name: string } | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(new Set())
+  const [shared, setShared] = useState(false)
+  const [showFavorites, setShowFavorites] = useState(() => {
+    try { return localStorage.getItem('matriz.showFavorites') === 'true' } catch { return false }
+  })
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const tableRef = useRef<HTMLDivElement>(null)
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const bodyJugadorRef = useRef<HTMLTableCellElement>(null)
@@ -256,6 +264,13 @@ export function Matriz() {
     }
   }, [filterColors])
 
+  useEffect(() => {
+    try {
+      if (showFavorites) localStorage.setItem('matriz.showFavorites', 'true')
+      else localStorage.removeItem('matriz.showFavorites')
+    } catch {}
+  }, [showFavorites])
+
   const handleToggleFavorite = useCallback(async (planillaId: string, e: React.MouseEvent) => {
     e.stopPropagation()
     if (togglingFav) return
@@ -335,6 +350,68 @@ export function Matriz() {
     return (b4 - a4) || (b3 - a3) || (b2 - a2) || (b1 - a1)
   })
 
+  const searchSuggestions = searchQuery.trim()
+    ? rows.filter(r =>
+        r.user_name.toLowerCase().includes(searchQuery.toLowerCase().trim()) &&
+        !selectedPlayers.has(r.planilla_id)
+      ).slice(0, 8)
+    : []
+
+  // Filtro visible: jugadores buscados tienen prioridad; si no, "Mi grupo" (favoritos + yo); si no, todos.
+  const filteredRows = selectedPlayers.size > 0
+    ? rows.filter(r => selectedPlayers.has(r.planilla_id))
+    : showFavorites
+      ? rows.filter(r => favorites.has(r.planilla_id) || r.user_id === user?.id)
+      : rows
+
+  const handleSearchToggle = () => {
+    if (searchOpen && selectedPlayers.size === 0) {
+      setSearchOpen(false); setSearchQuery('')
+    } else {
+      setSearchOpen(true)
+      requestAnimationFrame(() => searchInputRef.current?.focus())
+    }
+  }
+
+  const handleSelectPlayer = (planillaId: string) => {
+    setSelectedPlayers(prev => new Set([...prev, planillaId]))
+    setSearchQuery('')
+    requestAnimationFrame(() => searchInputRef.current?.focus())
+  }
+
+  const handleRemovePlayer = (planillaId: string) => {
+    setSelectedPlayers(prev => { const n = new Set(prev); n.delete(planillaId); return n })
+  }
+
+  const handleClearSearch = () => {
+    setSelectedPlayers(new Set()); setSearchQuery(''); setSearchOpen(false)
+  }
+
+  const handleDownload = () => window.print()
+
+  const buildShareText = () => {
+    const top10 = rows.slice(0, 10)
+    const lines = top10
+      .map((r, i) => `${i + 1}. ${r.user_name} — ${tournamentPts.get(r.planilla_id) ?? 0} pts`)
+      .join('\n')
+    return `🏆 Planilla General — PRODE High Rolling\n\n${lines}\n\n¿Quién gana? ${window.location.origin}`
+  }
+
+  const handleShare = async () => {
+    const text = buildShareText()
+    if (navigator.share) {
+      await navigator.share({ title: 'Planilla General — PRODE High Rolling', text, url: window.location.href }).catch(() => {})
+    } else {
+      await navigator.clipboard.writeText(text)
+      setShared(true)
+      setTimeout(() => setShared(false), 2500)
+    }
+  }
+
+  const handleShareWhatsApp = () => {
+    window.open(`https://wa.me/?text=${encodeURIComponent(buildShareText())}`, '_blank')
+  }
+
   const getBetsForRow = (r: RankingEntry) => bets[r.planilla_id] || {}
 
   return (
@@ -356,6 +433,13 @@ export function Matriz() {
           left: var(--jugador-width, 140px);
           z-index: 5;
         }
+
+        @media print {
+          .no-print { display: none !important; }
+          .sticky { position: static !important; }
+          .overflow-x-auto { overflow: visible !important; }
+          table { font-size: 9px !important; }
+        }
       `}</style>
 
       <div className="max-w-7xl mx-auto px-2 flex items-start justify-between flex-wrap gap-3">
@@ -374,14 +458,139 @@ export function Matriz() {
             )}
           </div>
           <p className="text-xs t-text-muted mt-1">
-            {t.matrix.players(rows.length)} · {t.matrix.matches(allMatches.length)}
+            {t.matrix.players(filteredRows.length)} · {t.matrix.matches(allMatches.length)}
           </p>
         </div>
 
+        {/* Botones de acción */}
+        <div className="flex items-center gap-1.5 shrink-0 no-print">
+          <button
+            onClick={() => setShowFavorites(v => !v)}
+            title={showFavorites ? 'Ver todos los jugadores' : 'Ver solo mis favoritos'}
+            className={`relative flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              showFavorites ? 'bg-yellow-400 text-yellow-900' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}>
+            <span>{showFavorites ? '⭐' : '☆'}</span>
+            <span className="hidden sm:inline">Mi grupo</span>
+            {favorites.size > 0 && !showFavorites && (
+              <span className="absolute -top-1 -right-1 bg-yellow-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+                {favorites.size}
+              </span>
+            )}
+          </button>
+          <button onClick={handleShare} title="Compartir planilla"
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              shared ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}>
+            <span>{shared ? '✓' : '↗'}</span>
+            <span className="hidden sm:inline">{shared ? 'Copiado' : 'Compartir'}</span>
+          </button>
+          <button onClick={handleShareWhatsApp} title="Compartir en WhatsApp"
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all">
+            <span>💬</span>
+            <span className="hidden sm:inline">WhatsApp</span>
+          </button>
+          <button onClick={handleDownload} title="Descargar planilla"
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all">
+            <span>📥</span>
+            <span className="hidden sm:inline">Descargar</span>
+          </button>
+          <button onClick={handleSearchToggle} title="Buscar jugador"
+            className={`relative flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              searchOpen || selectedPlayers.size > 0 ? 'bg-[#0042A5] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}>
+            <span>🔍</span>
+            <span className="hidden sm:inline">{searchOpen ? 'Cerrar' : 'Buscar'}</span>
+            {selectedPlayers.size > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+                {selectedPlayers.size}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
+      {/* Panel de búsqueda multi-select */}
+      {searchOpen && (
+        <div className="max-w-7xl mx-auto px-2 no-print">
+          {selectedPlayers.size > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {rows.filter(r => selectedPlayers.has(r.planilla_id)).map(r => (
+                <span key={r.planilla_id}
+                  className="inline-flex items-center gap-1 bg-[#0042A5] text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                  {r.user_name}
+                  <button onClick={(e) => { e.stopPropagation(); handleRemovePlayer(r.planilla_id) }}
+                    className="opacity-70 hover:opacity-100 leading-none ml-0.5">×</button>
+                </span>
+              ))}
+              <button onClick={(e) => { e.stopPropagation(); handleClearSearch() }}
+                className="text-xs text-gray-400 hover:text-gray-600 px-1 self-center">
+                Limpiar todo
+              </button>
+            </div>
+          )}
+          <div className="relative max-w-xs" onClick={e => e.stopPropagation()}>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm">🔍</span>
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder={selectedPlayers.size > 0 ? 'Agregar otro jugador...' : 'Buscar jugador...'}
+              className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0042A5] bg-white shadow-sm text-[#001A4B]"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base leading-none">
+                ×
+              </button>
+            )}
+            {searchSuggestions.length > 0 && (
+              <ul className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                {searchSuggestions.map(r => (
+                  <li key={r.planilla_id}>
+                    <button
+                      onClick={() => handleSelectPlayer(r.planilla_id)}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex items-center justify-between transition-colors">
+                      <span className="font-medium text-[#001A4B]">{r.user_name}</span>
+                      <span className="text-xs text-gray-400">{tournamentPts.get(r.planilla_id) ?? 0} pts</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Filtro por torneo — solo visible si hay 2+ torneos */}
+      {tournaments.length > 1 && (
+        <div className="max-w-7xl mx-auto px-2 flex gap-2 flex-wrap no-print">
+          {tournaments.map(tour => (
+            <button
+              key={tour.id}
+              onClick={() => {
+                setSelectedTournamentId(tour.id)
+                selectedTournamentIdRef.current = tour.id
+                Promise.all([
+                  loadBetsForTournament(tour.id, elimTourIdRef.current, tournaments.length),
+                  loadRankingForTournament(tour.id, elimTourIdRef.current)
+                ]).catch(() => show(t.matrix.errorLoad, 'error'))
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                selectedTournamentId === tour.id
+                  ? 't-bg-primary t-text-on-primary'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {tour.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {finishedMatches.length > 0 && (
-        <div className="max-w-7xl mx-auto px-2 flex gap-2 flex-wrap text-xs items-center">
+        <div className="max-w-7xl mx-auto px-2 flex gap-2 flex-wrap text-xs items-center no-print">
           {(['celeste','rojo','verde','amarillo','gris'] as const).map((c) => (
             <button
               key={c}
@@ -429,7 +638,7 @@ export function Matriz() {
             tiene overflow-x:auto. Solución: header en div sticky separado,
             sincronizado con el body via JS onBodyScroll.
         ── */}
-        <div className="sticky top-14 z-20 overflow-hidden shadow-sm">
+        <div className="sticky top-14 z-20 overflow-hidden shadow-sm no-print">
           <div ref={headerInnerRef} className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <table className="text-xs border-collapse min-w-max">
               <thead>
@@ -485,7 +694,7 @@ export function Matriz() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, ri) => {
+              {filteredRows.map((r, ri) => {
                 const isMe = r.user_id === user?.id
                 const isUnpaid = !r.precio_pagado
                 const playerBets = getBetsForRow(r)

@@ -36,7 +36,8 @@ function ApuestasSkeleton() {
     </div>
   )
 }
-import type { Match, Bet, Planilla } from '@/types'
+import { EliminatoriaBracket } from '@/pages/EliminatoriaBracket'
+import type { Match, Bet, Planilla, Tournament } from '@/types'
 
 export function Apuestas() {
   const { show } = useToastStore()
@@ -54,8 +55,20 @@ export function Apuestas() {
   const [now, setNow] = useState(Date.now())
   const [showHelp, setShowHelp] = useState(true)
   const [runTour, setRunTour] = useState(false)
+  const [tournaments, setTournaments] = useState<Tournament[]>([])
+  const [roundTab, setRoundTab] = useState<'grupos' | 'eliminatoria'>('grupos')
   const hasLive = matches.some(m => m.estado === 'live')
   const isTournamentClosed = matches.length > 0 && now > Math.min(...matches.map(m => new Date(m.time_cutoff).getTime()))
+  const eliminatoriaTournament = tournaments.find(t => t.is_active && !/grupo/i.test(t.fase ?? ''))
+
+  // Planillas filtradas por tab: grupos = no asociadas a eliminatoria; eliminatoria = asociadas al torneo eliminatorio
+  const planillasForTab = useMemo(() => {
+    if (!eliminatoriaTournament) return planillas
+    if (roundTab === 'eliminatoria') {
+      return planillas.filter(p => (p.tournament_ids ?? []).includes(eliminatoriaTournament.id))
+    }
+    return planillas.filter(p => !(p.tournament_ids ?? []).includes(eliminatoriaTournament.id))
+  }, [planillas, roundTab, eliminatoriaTournament])
 
   useEffect(() => {
     loadInitial()
@@ -73,6 +86,12 @@ export function Apuestas() {
   useEffect(() => {
     if (selectedPlanilla) loadBets(selectedPlanilla)
   }, [selectedPlanilla])
+
+  // Al cambiar de tab, auto-seleccionar la primera planilla del tab si la actual no pertenece a él
+  useEffect(() => {
+    const valid = planillasForTab.some(p => p.id === selectedPlanilla)
+    if (!valid) setSelectedPlanilla(planillasForTab[0]?.id ?? '')
+  }, [planillasForTab])
 
   // Tick now every 30s (for countdown chips)
   useEffect(() => {
@@ -96,9 +115,10 @@ export function Apuestas() {
   const loadInitial = async () => {
     setLoading(true)
     try {
-      const [matchRes, planRes] = await Promise.all([
+      const [matchRes, planRes, tourRes] = await Promise.all([
         api.get('/matches?limit=200'),
         api.get('/planillas'),
+        api.get('/tournaments').catch(() => ({ data: { data: [] } })),
       ])
       setMatches(matchRes.data.data.matches)
       const pl: Planilla[] = planRes.data.data
@@ -106,6 +126,7 @@ export function Apuestas() {
       if (pl.length > 0) {
         setSelectedPlanilla(pl[0].id)
       }
+      setTournaments(tourRes.data.data || [])
     } catch {
       show(t.bets.errorLoadMatches, 'error')
     } finally {
@@ -125,14 +146,19 @@ export function Apuestas() {
   }
 
   const handleCreatePlanilla = async () => {
-    if (isTournamentClosed) {
+    if (roundTab === 'grupos' && isTournamentClosed) {
       show(t.bets.tournamentClosed, 'error')
       setShowNewPlanilla(false)
       return
     }
     setCreatingPlanilla(true)
     try {
-      const { data } = await api.post('/planillas')
+      const tournament_id = roundTab === 'eliminatoria'
+        ? eliminatoriaTournament?.id
+        : tournaments.find(t => t.is_active && /grupo/i.test(t.fase ?? ''))?.id
+      const { data } = tournament_id
+        ? await api.post('/planillas', { tournament_id })
+        : await api.post('/planillas')
       const created: Planilla = data.data
       setPlanillas(prev => [...prev, created])
       setSelectedPlanilla(created.id)
@@ -235,16 +261,35 @@ export function Apuestas() {
         </div>
       )}
 
-      {/* Selector de planilla + crear nueva */}
+      {/* Tabs Grupos / Eliminatoria — solo se muestran si hay torneo eliminatorio activo */}
+      {eliminatoriaTournament && (
+        <div className="flex rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+          {(['grupos', 'eliminatoria'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setRoundTab(tab)}
+              className={`flex-1 py-2.5 text-sm font-bold transition-colors ${
+                roundTab === tab
+                  ? 't-bg-primary t-text-on-primary'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab === 'grupos' ? t.bets.tabGrupos : t.bets.tabEliminatoria}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Selector de planilla + crear nueva (visible en ambas tabs) */}
       <div className="flex gap-2 items-center" data-tour="planilla-selector">
-        {planillas.length > 0 ? (
+        {planillasForTab.length > 0 ? (
           <div className="relative flex-1">
             <select
               value={selectedPlanilla}
               onChange={(e) => setSelectedPlanilla(e.target.value)}
               className="w-full appearance-none border border-gray-200 t-text-nav rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#0042A5] pr-8 font-medium transition-all"
             >
-              {planillas.map((p) => (
+              {planillasForTab.map((p) => (
                 <option key={p.id} value={p.id}>{p.nombre_planilla}</option>
               ))}
             </select>
@@ -255,7 +300,7 @@ export function Apuestas() {
             {t.bets.noPlanillas}
           </div>
         )}
-        {!isTournamentClosed && (
+        {(roundTab === 'eliminatoria' ? !!eliminatoriaTournament : !isTournamentClosed) && (
           <button
             onClick={() => setShowNewPlanilla(true)}
             data-tour="new-planilla"
@@ -300,8 +345,21 @@ export function Apuestas() {
         </>
       )}
 
-      {/* Botón confirmar planilla */}
-      {selectedPlanillaObj && !selectedPlanillaObj.locked && (() => {
+      {/* Vista Eliminatoria */}
+      {roundTab === 'eliminatoria' && eliminatoriaTournament && (
+        <EliminatoriaBracket
+          planillaId={selectedPlanilla}
+          planillaLocked={selectedPlanillaObj?.locked ?? false}
+          tournament={eliminatoriaTournament}
+          now={now}
+        />
+      )}
+
+      {/* Vista Grupos (contenido específico de la tab de grupos) */}
+      {roundTab === 'grupos' && (
+        <>
+          {/* Botón confirmar planilla */}
+          {selectedPlanillaObj && !selectedPlanillaObj.locked && (() => {
         const missing = pendingMatches.filter(m => !bets[m.id]).length
         const allDone = missing === 0 && pendingMatches.length > 0
         return (
@@ -413,6 +471,9 @@ export function Apuestas() {
           </Fragment>
         ))}
       </div>
+
+        </>
+      )}
 
       <OnboardingTour run={runTour} onFinish={() => setRunTour(false)} />
       <PushPromptModal delayMs={800} />

@@ -217,10 +217,13 @@ export function BracketDesktop({ matches, bets, planillaId, planillaLocked, now,
             className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm"
             onClick={() => setSelectedMatch(null)}
           />
-          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl p-6 max-w-lg mx-auto max-h-[80vh] overflow-y-auto">
+          <div
+            className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 rounded-2xl shadow-2xl p-6 max-w-lg mx-auto max-h-[80vh] overflow-y-auto"
+            style={{ background: 'var(--theme-page-bg)' }}
+          >
             <button
               onClick={() => setSelectedMatch(null)}
-              className="absolute top-4 right-4 t-text-muted hover:text-gray-600 text-2xl leading-none"
+              className="absolute top-4 right-4 t-text-page hover:opacity-70 text-2xl leading-none z-10"
             >
               ×
             </button>

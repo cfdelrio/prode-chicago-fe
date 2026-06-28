@@ -38,6 +38,14 @@ export interface Match {
   sede?: string
   grupo?: string
   jornada?: number
+  // Bracket eliminatorio: de qué partido sale cada slot y si avanza el ganador o el perdedor
+  home_source_match_id?: string
+  away_source_match_id?: string
+  home_source_kind?: 'winner' | 'loser'
+  away_source_kind?: 'winner' | 'loser'
+  // Penales (solo para definir quién avanza en empates; no afectan el puntaje)
+  penales_local?: number
+  penales_visitante?: number
 }
 
 export interface Bet {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { Ranking } from '@/pages/Ranking'
@@ -173,8 +173,9 @@ describe('Ranking — filtro favoritos con favoritos reales', () => {
     renderRanking()
 
     await waitFor(() => {
-      // El botón tiene el contador "1" de favoritos
-      expect(screen.getByText('1')).toBeInTheDocument()
+      // El botón Favoritos tiene el contador "1" (badge dentro del botón)
+      const favBtn = screen.getByRole('button', { name: /⭐ Favoritos/i })
+      expect(within(favBtn).getByText('1')).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 })

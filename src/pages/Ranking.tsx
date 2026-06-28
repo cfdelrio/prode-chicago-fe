@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
@@ -58,7 +58,7 @@ function RankingContentSkeleton() {
   )
 }
 import { useRankingDeltas } from '@/hooks/useRankingDeltas'
-import type { RankingEntry } from '@/types'
+import type { RankingEntry, Tournament } from '@/types'
 
 const MEDAL = ['🥇', '🥈', '🥉']
 const PODIUM_BORDER = ['border-l-2 border-l-yellow-400', 'border-l-2 border-l-slate-300', 'border-l-2 border-l-amber-600/60']
@@ -94,16 +94,45 @@ export function Ranking() {
     setFavBannerVisible(false)
   }
 
+  const [tournaments, setTournaments] = useState<Tournament[]>([])
+  const [selectedTournamentId, setSelectedTournamentId] = useState<string>('')
+  const [eliminatoriaTournamentId, setEliminatoriaTournamentId] = useState<string>('')
+  const selectedTournamentIdRef = useRef<string>('')
+
+  const loadRankingForTournament = useCallback(async (tourId: string, elimTourId: string) => {
+    try {
+      let url = '/ranking?limit=500'
+      if (elimTourId) {
+        url += tourId === elimTourId
+          ? `&tournament_id=${elimTourId}`
+          : `&not_tournament_id=${elimTourId}`
+      } else if (tourId) {
+        url += `&tournament_id=${tourId}`
+      }
+      const res = await api.get(url)
+      setRanking(res.data.data.ranking || [])
+    } catch {
+      show(t.ranking.errorLoad, 'error')
+    }
+  }, [show, t])
+
   useEffect(() => {
     Promise.allSettled([
-      api.get('/ranking?limit=500'),
+      api.get('/tournaments'),
       api.get('/ranking/favorites').catch(() => ({ data: { data: [] } })),
-    ]).then(([rRes, fRes]) => {
-      if (rRes.status === 'fulfilled') setRanking(rRes.value.data.data.ranking || [])
-      else show(t.ranking.errorLoad, 'error')
+    ]).then(([tourRes, fRes]) => {
+      const tourList: Tournament[] = tourRes.status === 'fulfilled' ? (tourRes.value.data.data || []) : []
+      setTournaments(tourList)
+      const elim = tourList.find(t => /eliminatoria|knockout/i.test(t.fase ?? ''))
+      const elimTourId = elim?.id ?? ''
+      setEliminatoriaTournamentId(elimTourId)
+      const firstTourId = tourList.length > 0 ? tourList[0].id : ''
+      setSelectedTournamentId(firstTourId)
+      selectedTournamentIdRef.current = firstTourId
       if (fRes.status === 'fulfilled') setFavorites(new Set(fRes.value.data.data || []))
-    }).finally(() => setLoading(false))
-  }, [])
+      loadRankingForTournament(firstTourId, elimTourId).finally(() => setLoading(false))
+    }).catch(() => setLoading(false))
+  }, [loadRankingForTournament])
 
   useEffect(() => {
     setShared(false)
@@ -166,6 +195,29 @@ export function Ranking() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
       <h1 className="text-xl font-bold t-text-page">{t.ranking.title}</h1>
+
+      {/* Tournament tabs */}
+      {tournaments.length > 1 && (
+        <div className="flex gap-2 flex-wrap">
+          {tournaments.map(tour => (
+            <button
+              key={tour.id}
+              onClick={() => {
+                setSelectedTournamentId(tour.id)
+                selectedTournamentIdRef.current = tour.id
+                loadRankingForTournament(tour.id, eliminatoriaTournamentId).catch(() => show(t.ranking.errorLoad, 'error'))
+              }}
+              className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
+                selectedTournamentId === tour.id
+                  ? 't-bg-primary text-white border-transparent shadow-sm'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              {tour.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Favoritos */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -300,7 +352,7 @@ export function Ranking() {
               <div className="grid grid-cols-[2rem_1fr_auto_auto_2rem] gap-2 px-4 py-2 bg-gray-50 text-xs font-semibold text-gray-500 border-b">
                 <span>#</span>
                 <span>{t.ranking.player}</span>
-                <span className="text-center">{t.ranking.exact}</span>
+                <span className="text-center" title={t.ranking.fourPtsHint}>{t.ranking.fourPts}</span>
                 <span className="text-right">{t.ranking.pts}</span>
                 <span />
               </div>
@@ -384,7 +436,7 @@ export function Ranking() {
                         </p>
                       </div>
                     </div>
-                    <span className="text-xs text-center text-gray-600">{r.exactos_count}</span>
+                    <span className="text-xs text-center text-sky-600 font-semibold" title={t.ranking.fourPtsHint}>{r.aciertos_celeste}</span>
                     <span className="font-black t-text-primary text-right">{r.puntos_totales}</span>
                     {/* Botón favorito — no mostrar en fila propia */}
                     {!isMe ? (

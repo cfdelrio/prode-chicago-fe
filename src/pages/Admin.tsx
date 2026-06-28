@@ -82,8 +82,9 @@ export function Admin() {
   const [matchForm, setMatchForm] = useState({
     home_team: '', away_team: '', start_time: '', tournament_id: '', halftime_minutes: '15',
     sede: '', grupo: '', jornada: '',
+    home_source_match_id: '', away_source_match_id: '', home_source_kind: '', away_source_kind: '',
   })
-  const [resultForm, setResultForm] = useState({ resultado_local: '', resultado_visitante: '' })
+  const [resultForm, setResultForm] = useState({ resultado_local: '', resultado_visitante: '', penales_local: '', penales_visitante: '' })
   useEffect(() => {
     loadData()
     const interval = setInterval(loadData, 30000)
@@ -144,10 +145,40 @@ export function Admin() {
     e.preventDefault()
     if (!resultMatch) return
     try {
-      await api.post(`/matches/${resultMatch.id}/result`, {
-        resultado_local: parseInt(resultForm.resultado_local),
-        resultado_visitante: parseInt(resultForm.resultado_visitante),
-      })
+      const rl = parseInt(resultForm.resultado_local)
+      const rv = parseInt(resultForm.resultado_visitante)
+
+      // Validaciones de penales
+      if (resultForm.penales_local !== '' || resultForm.penales_visitante !== '') {
+        // Si se cargó al menos un penal, ambos deben estar presentes
+        if (resultForm.penales_local === '' || resultForm.penales_visitante === '') {
+          show('Error: si cargas penales, debes completar ambos', 'error')
+          return
+        }
+        // Los penales solo son válidos en empates
+        if (rl !== rv) {
+          show('Error: los penales solo se usan en empates (mismo marcador)', 'error')
+          return
+        }
+        // Los penales deben resolver el empate (ganador diferente)
+        const pl = parseInt(resultForm.penales_local)
+        const pv = parseInt(resultForm.penales_visitante)
+        if (pl === pv) {
+          show('Error: los penales deben tener un ganador (scores distintos)', 'error')
+          return
+        }
+      }
+
+      const payload: Record<string, number> = {
+        resultado_local: rl,
+        resultado_visitante: rv,
+      }
+      // Penales: solo se envían si se cargaron ambos (definen quién avanza en empates)
+      if (resultForm.penales_local !== '' && resultForm.penales_visitante !== '') {
+        payload.penales_local = parseInt(resultForm.penales_local)
+        payload.penales_visitante = parseInt(resultForm.penales_visitante)
+      }
+      await api.post(`/matches/${resultMatch.id}/result`, payload)
       show('Resultado publicado ✓ Ranking actualizado', 'success')
       setShowResultModal(false)
       setResultMatch(null)
@@ -168,6 +199,10 @@ export function Admin() {
       sede: m.sede || '',
       grupo: m.grupo || '',
       jornada: m.jornada ? String(m.jornada) : '',
+      home_source_match_id: m.home_source_match_id || '',
+      away_source_match_id: m.away_source_match_id || '',
+      home_source_kind: m.home_source_kind || '',
+      away_source_kind: m.away_source_kind || '',
     })
     setShowMatchModal(true)
   }
@@ -177,13 +212,15 @@ export function Admin() {
     setResultForm({
       resultado_local: String(m.resultado_local ?? ''),
       resultado_visitante: String(m.resultado_visitante ?? ''),
+      penales_local: m.penales_local != null ? String(m.penales_local) : '',
+      penales_visitante: m.penales_visitante != null ? String(m.penales_visitante) : '',
     })
     setShowResultModal(true)
   }
 
   const openNewMatch = (tournamentId = '') => {
     setEditMatch(null)
-    setMatchForm({ home_team: '', away_team: '', start_time: '', tournament_id: tournamentId, halftime_minutes: '15', sede: '', grupo: '', jornada: '' })
+    setMatchForm({ home_team: '', away_team: '', start_time: '', tournament_id: tournamentId, halftime_minutes: '15', sede: '', grupo: '', jornada: '', home_source_match_id: '', away_source_match_id: '', home_source_kind: '', away_source_kind: '' })
     setShowMatchModal(true)
   }
 
@@ -295,16 +332,83 @@ export function Admin() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Jornada</label>
-              <select value={matchForm.jornada} onChange={(e) => setMatchForm({ ...matchForm, jornada: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]">
-                <option value="">—</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-              </select>
+              {(() => {
+                const selectedT = tournaments.find(t => t.id === matchForm.tournament_id)
+                const isElim = !!selectedT && !/grupo/i.test(selectedT.fase ?? '')
+                const knockoutRounds: [string, string][] = [
+                  ['1', '16avos (Elim. de 32)'],
+                  ['2', 'Octavos de Final'],
+                  ['3', 'Cuartos de Final'],
+                  ['4', 'Semifinales'],
+                  ['5', 'Tercer Puesto'],
+                  ['6', 'Final'],
+                ]
+                return (
+                  <>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      {isElim ? 'Ronda' : 'Jornada'}
+                    </label>
+                    <select value={matchForm.jornada} onChange={(e) => setMatchForm({ ...matchForm, jornada: e.target.value })}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0042A5]">
+                      <option value="">—</option>
+                      {isElim
+                        ? knockoutRounds.map(([v, label]) => <option key={v} value={v}>{`${v} · ${label}`}</option>)
+                        : [1, 2, 3].map(n => <option key={n} value={String(n)}>{n}</option>)}
+                    </select>
+                  </>
+                )
+              })()}
             </div>
           </div>
+          {(() => {
+            const selectedT = tournaments.find(t => t.id === matchForm.tournament_id)
+            const isElim = !!selectedT && !/grupo/i.test(selectedT.fase ?? '')
+            if (!isElim) return null
+            const roundShort: Record<number, string> = { 1: '16avos', 2: 'Octavos', 3: 'Cuartos', 4: 'Semis', 5: '3er Puesto', 6: 'Final' }
+            const candidates = matches
+              .filter(m => m.tournament_id === matchForm.tournament_id && m.id !== editMatch?.id)
+              .sort((a, b) => (a.jornada ?? 0) - (b.jornada ?? 0))
+            const slot = (
+              label: string,
+              idVal: string,
+              kindVal: string,
+              onId: (v: string) => void,
+              onKind: (v: string) => void,
+            ) => (
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-gray-600">{label} sale de</label>
+                <div className="flex gap-2">
+                  <select value={idVal} onChange={(e) => onId(e.target.value)}
+                    className="flex-1 border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#0042A5]">
+                    <option value="">— carga manual</option>
+                    {candidates.map(m => (
+                      <option key={m.id} value={m.id}>
+                        {`${m.jornada ? roundShort[m.jornada] ?? `R${m.jornada}` : '—'}: ${m.home_team} vs ${m.away_team}`}
+                      </option>
+                    ))}
+                  </select>
+                  <select value={kindVal} onChange={(e) => onKind(e.target.value)}
+                    className="border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#0042A5]">
+                    <option value="">—</option>
+                    <option value="winner">Ganador</option>
+                    <option value="loser">Perdedor</option>
+                  </select>
+                </div>
+              </div>
+            )
+            return (
+              <div className="space-y-2 rounded-lg bg-blue-50/60 border border-blue-100 p-3">
+                <p className="text-xs font-semibold text-[#0042A5]">🔗 Bracket — de dónde salen los equipos (opcional)</p>
+                {slot('Local', matchForm.home_source_match_id, matchForm.home_source_kind,
+                  (v) => setMatchForm({ ...matchForm, home_source_match_id: v }),
+                  (v) => setMatchForm({ ...matchForm, home_source_kind: v }))}
+                {slot('Visitante', matchForm.away_source_match_id, matchForm.away_source_kind,
+                  (v) => setMatchForm({ ...matchForm, away_source_match_id: v }),
+                  (v) => setMatchForm({ ...matchForm, away_source_kind: v }))}
+                <p className="text-[11px] text-gray-400">Al publicar el resultado del partido origen, el equipo que avanza se completa solo acá.</p>
+              </div>
+            )
+          })()}
           <Button type="submit" fullWidth>
             {editMatch ? 'Actualizar' : 'Crear partido'}
           </Button>
@@ -329,6 +433,27 @@ export function Admin() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-3 text-2xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-[#0042A5]" required />
             </div>
           </div>
+          {(() => {
+            const rt = tournaments.find(t => t.id === resultMatch?.tournament_id)
+            const isElimResult = !!rt && !/grupo/i.test(rt.fase ?? '')
+            if (!isElimResult) return null
+            return (
+              <div className="rounded-lg bg-amber-50/60 border border-amber-100 p-3 space-y-2">
+                <p className="text-xs font-semibold text-amber-700">
+                  ⚽ Penales <span className="font-normal text-gray-400">(solo si se definió por penales)</span>
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <input type="number" min={0} value={resultForm.penales_local} placeholder="Local"
+                    onChange={(e) => setResultForm({ ...resultForm, penales_local: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                  <input type="number" min={0} value={resultForm.penales_visitante} placeholder="Visitante"
+                    onChange={(e) => setResultForm({ ...resultForm, penales_visitante: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                </div>
+                <p className="text-[11px] text-gray-400">El ganador por penales avanza al cruce siguiente.</p>
+              </div>
+            )
+          })()}
           <button type="submit" className="w-full bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700">
             Publicar resultado y actualizar ranking
           </button>

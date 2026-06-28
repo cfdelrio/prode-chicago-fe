@@ -9,7 +9,7 @@ import { calcularPuntaje, POINT_COLORS } from '@/utils/scoring'
 import { teamFlag } from '@/utils/teamFlags'
 import { useAuthStore } from '@/store/authStore'
 import { useToastStore } from '@/store/toastStore'
-import type { Match, RankingEntry } from '@/types'
+import type { Match, RankingEntry, Tournament } from '@/types'
 
 type BetMap = Record<string, Record<string, { home: number; away: number }>>
 
@@ -141,6 +141,10 @@ export function Matriz() {
   const [bets, setBets] = useState<BetMap>({})
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [tournaments, setTournaments] = useState<Tournament[]>([])
+  const [selectedTournamentId, setSelectedTournamentId] = useState<string>('')
+  const selectedTournamentIdRef = useRef<string>('')
+  const elimTourIdRef = useRef('')
   const [activeCell, setActiveCell] = useState<ActiveCell | null>(null)
   const [filterColors, setFilterColors] = useState<Set<string>>(() => {
     try {
@@ -186,23 +190,56 @@ export function Matriz() {
     return () => window.removeEventListener('resize', sync)
   }, [loading, ranking.length])
 
+  const loadBetsForTournament = useCallback(async (tid: string, elimId: string, tourCount: number = tournaments.length) => {
+    let url = '/bets/all-for-matrix'
+    // Siempre filtrar si hay eliminatoria detectada, O si el tid es distinto al primero
+    if (elimId) {
+      url += tid === elimId ? `?tournament_id=${elimId}` : `?not_tournament_id=${elimId}`
+    } else if (tid && tourCount > 1) {
+      // Sin eliminatoria detectada pero hay múltiples torneos → filtrar por este torneo
+      url += `?tournament_id=${tid}`
+    }
+    const bRes = await api.get(url)
+    setBets(bRes.data.data)
+  }, [])
+
+  const loadRankingForTournament = useCallback(async (tid: string, elimId: string) => {
+    let url = '/ranking?limit=200&include_unpaid=true'
+    if (elimId) {
+      url += tid === elimId ? `&tournament_id=${elimId}` : `&not_tournament_id=${elimId}`
+    }
+    const rRes = await api.get(url)
+    setRanking(rRes.data.data.ranking || [])
+  }, [])
+
   const loadMatrizData = useCallback(async () => {
     setRefreshing(true)
     try {
-      const [mRes, rRes, bRes, favRes] = await Promise.all([
+      const [mRes, favRes, tourRes] = await Promise.all([
         api.get('/matches?limit=200'),
-        api.get('/ranking?limit=200&include_unpaid=true'),
-        api.get('/bets/all-for-matrix'),
         api.get('/ranking/favorites').catch(() => ({ data: { data: [] } })),
+        api.get('/tournaments').catch(() => ({ data: { data: [] } })),
       ])
       setMatches(mRes.data.data.matches)
-      setRanking(rRes.data.data.ranking)
-      setBets(bRes.data.data)
       setFavorites(new Set(favRes.data.data || []))
+      const tourList: Tournament[] = tourRes.data.data || []
+      setTournaments(tourList)
+      const elim = tourList.find(t => t.is_active && !/grupo/i.test(t.fase ?? ''))
+      const elimId = elim?.id ?? ''
+      elimTourIdRef.current = elimId
+      const tid = selectedTournamentIdRef.current || (tourList.length > 0 ? tourList[0].id : '')
+      if (!selectedTournamentIdRef.current && tid) {
+        setSelectedTournamentId(tid)
+        selectedTournamentIdRef.current = tid
+      }
+      await Promise.all([
+        loadBetsForTournament(tid, elimId, tourList.length),
+        loadRankingForTournament(tid, elimId)
+      ])
     } finally {
       setRefreshing(false)
     }
-  }, [])
+  }, [loadBetsForTournament, loadRankingForTournament])
 
   useEffect(() => {
     loadMatrizData().catch(() => show(t.matrix.errorLoad, 'error')).finally(() => setLoading(false))
@@ -254,10 +291,12 @@ export function Matriz() {
   }, [activeCell])
 
 
-  const filteredMatches = matches
-  const finishedMatches = filteredMatches.filter(m => m.estado === 'finished')
-  const pendingMatches  = filteredMatches.filter(m => m.estado !== 'finished')
-  const hasLiveMatch    = filteredMatches.some(m => m.estado === 'live')
+  const tournamentMatches = selectedTournamentId
+    ? matches.filter(m => m.tournament_id === selectedTournamentId)
+    : matches
+  const finishedMatches = tournamentMatches.filter(m => m.estado === 'finished')
+  const pendingMatches  = tournamentMatches.filter(m => m.estado !== 'finished')
+  const hasLiveMatch    = tournamentMatches.some(m => m.estado === 'live')
   const allMatches = [...finishedMatches, ...pendingMatches]
 
   if (loading) return <MatrizSkeleton />
@@ -265,22 +304,36 @@ export function Matriz() {
   const baseRows: RankingEntry[] = ranking
 
   const tournamentPts = new Map<string, number>()
+  // Conteo de aciertos por nivel [4pts, 3pts, 2pts, 1pt] para el desempate.
+  const tournamentBreakers = new Map<string, [number, number, number, number]>()
   baseRows.forEach(r => {
     const playerBets = bets[r.planilla_id] || {}
-    const pts = finishedMatches.reduce((total, m) => {
+    let pts = 0, c4 = 0, c3 = 0, c2 = 0, c1 = 0
+    for (const m of finishedMatches) {
       const b = playerBets[m.id]
-      if (!b || m.resultado_local === undefined || m.resultado_visitante === undefined) return total
-      return total + calcularPuntaje(
+      if (!b || m.resultado_local === undefined || m.resultado_visitante === undefined) continue
+      const p = calcularPuntaje(
         { goles_local: b.home, goles_visitante: b.away },
         { resultado_local: m.resultado_local!, resultado_visitante: m.resultado_visitante! }
       ).puntos
-    }, 0)
+      pts += p
+      if (p === 4) c4++
+      else if (p === 3) c3++
+      else if (p === 2) c2++
+      else if (p === 1) c1++
+    }
     tournamentPts.set(r.planilla_id, pts)
+    tournamentBreakers.set(r.planilla_id, [c4, c3, c2, c1])
   })
 
-  const rows = [...baseRows].sort(
-    (a, b) => (tournamentPts.get(b.planilla_id) ?? 0) - (tournamentPts.get(a.planilla_id) ?? 0)
-  )
+  // Orden con desempate en cascada: pts → 4pts → 3pts → 2pts → 1pt (igual que el Ranking).
+  const rows = [...baseRows].sort((a, b) => {
+    const ptsDiff = (tournamentPts.get(b.planilla_id) ?? 0) - (tournamentPts.get(a.planilla_id) ?? 0)
+    if (ptsDiff !== 0) return ptsDiff
+    const [a4, a3, a2, a1] = tournamentBreakers.get(a.planilla_id) ?? [0, 0, 0, 0]
+    const [b4, b3, b2, b1] = tournamentBreakers.get(b.planilla_id) ?? [0, 0, 0, 0]
+    return (b4 - a4) || (b3 - a3) || (b2 - a2) || (b1 - a1)
+  })
 
   const getBetsForRow = (r: RankingEntry) => bets[r.planilla_id] || {}
 
